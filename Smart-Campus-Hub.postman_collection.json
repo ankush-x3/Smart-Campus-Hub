@@ -1,0 +1,514 @@
+{
+  "info": {
+    "_postman_id": "smart-campus-hub-collection",
+    "name": "🎓 Smart Campus Hub API",
+    "description": "Complete API collection for Smart Campus Hub (MERN Stack).\n\n**Base URL:** `http://localhost:5000/api`\n\n**Auth:** Set `{{token}}` variable after login — all protected routes use Bearer token.\n\n**Steps:**\n1. Run `Register` or `Login`\n2. Copy the `token` from response\n3. Set `token` variable in collection → Variables tab",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api", "type": "string" },
+    { "key": "token",   "value": "PASTE_TOKEN_HERE",          "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@campus.edu\",\n  \"password\": \"password123\",\n  \"role\": \"student\",\n  \"department\": \"Computer Science\",\n  \"year\": 2\n}"
+            },
+            "description": "Register a new user. Returns JWT token."
+          }
+        },
+        {
+          "name": "Login (Student)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@campus.edu\",\n  \"password\": \"student123\"\n}"
+            },
+            "description": "Login as student. Copy token to {{token}} variable."
+          }
+        },
+        {
+          "name": "Login (Faculty)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"faculty@campus.edu\",\n  \"password\": \"faculty123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@campus.edu\",\n  \"password\": \"admin123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Current User (Me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/auth/me",
+            "description": "Get logged-in user profile. Requires Bearer token."
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/auth/profile",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Updated\",\n  \"department\": \"Computer Science\",\n  \"phone\": \"+91-9876543210\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📢 Announcements",
+      "item": [
+        {
+          "name": "Get All Announcements",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/announcements?page=1&limit=10",
+              "query": [
+                { "key": "page",     "value": "1" },
+                { "key": "limit",    "value": "10" },
+                { "key": "category", "value": "academic", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Announcement (Faculty/Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/announcements",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mid-term Exam Schedule\",\n  \"content\": \"Mid-term exams will be held from Oct 15-20. Check the notice board for details.\",\n  \"category\": \"academic\",\n  \"isPinned\": true,\n  \"tags\": [\"exam\", \"academic\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Single Announcement",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/announcements/:id"
+          }
+        },
+        {
+          "name": "Update Announcement",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/announcements/:id",
+            "body": { "mode": "raw", "raw": "{\n  \"isPinned\": false\n}" }
+          }
+        },
+        {
+          "name": "Delete Announcement (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/announcements/:id"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎉 Events",
+      "item": [
+        {
+          "name": "Get All Events",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "query": [
+                { "key": "category", "value": "seminar", "disabled": true },
+                { "key": "status",   "value": "upcoming", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Event (Faculty/Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/events",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Annual Tech Symposium 2026\",\n  \"description\": \"Join us for the annual tech symposium featuring AI/ML talks.\",\n  \"date\": \"2026-11-15T09:00:00\",\n  \"endDate\": \"2026-11-15T17:00:00\",\n  \"location\": \"Main Auditorium\",\n  \"category\": \"seminar\",\n  \"maxAttendees\": 300\n}"
+            }
+          }
+        },
+        {
+          "name": "Register for Event",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/events/:id/register"
+          }
+        },
+        {
+          "name": "Cancel Event Registration",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/events/:id/register"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 Courses",
+      "item": [
+        {
+          "name": "Get All Courses",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/courses"
+          }
+        },
+        {
+          "name": "Create Course (Faculty/Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/courses",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Advanced Web Development\",\n  \"code\": \"CS401\",\n  \"description\": \"Deep dive into MERN stack and cloud deployment.\",\n  \"credits\": 4,\n  \"department\": \"Computer Science\",\n  \"semester\": \"Fall 2026\",\n  \"maxStudents\": 60\n}"
+            }
+          }
+        },
+        {
+          "name": "Enroll in Course",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/courses/:id/enroll"
+          }
+        },
+        {
+          "name": "Unenroll from Course",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/courses/:id/enroll"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Assignments",
+      "item": [
+        {
+          "name": "Get All Assignments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/assignments"
+          }
+        },
+        {
+          "name": "Create Assignment (Faculty)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/assignments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"React Component Design\",\n  \"description\": \"Build a reusable UI component library using React and Tailwind.\",\n  \"course\": \"COURSE_ID_HERE\",\n  \"dueDate\": \"2026-10-30T23:59:00\",\n  \"totalMarks\": 100\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Assignment (Student)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/assignments/:id/submit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileUrl\": \"https://drive.google.com/file/submission\",\n  \"fileName\": \"react-components-submission.zip\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Grade Submission (Faculty)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/assignments/:id/grade/:submissionId",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grade\": 87,\n  \"feedback\": \"Excellent work! Good component structure and clean code.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Assignment Submissions (Faculty)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/assignments/:id/submissions"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚨 Complaints",
+      "item": [
+        {
+          "name": "Get My Complaints",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/complaints"
+          }
+        },
+        {
+          "name": "Submit Complaint",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/complaints",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Broken projector in Room 204\",\n  \"description\": \"The projector in Room 204 has been broken for 3 days.\",\n  \"category\": \"infrastructure\",\n  \"priority\": \"high\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Complaint Status (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/complaints/:id/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in-progress\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Comment to Complaint",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/complaints/:id/comment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"We are working on replacing the projector. Expected by tomorrow.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 Resources",
+      "item": [
+        {
+          "name": "Get All Resources",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/resources",
+              "query": [{ "key": "type", "value": "lab", "disabled": true }]
+            }
+          }
+        },
+        {
+          "name": "Book Resource Slot",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/resources/:id/book",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-10-20\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Notifications",
+      "item": [
+        {
+          "name": "Get All Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/notifications"
+          }
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/notifications/unread-count"
+          }
+        },
+        {
+          "name": "Mark All as Read",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/notifications/read-all"
+          }
+        },
+        {
+          "name": "Mark Single as Read",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/notifications/:id/read"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Community",
+      "item": [
+        {
+          "name": "Get Community Posts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/community?page=1&limit=20",
+              "query": [
+                { "key": "page",     "value": "1" },
+                { "key": "limit",    "value": "20" },
+                { "key": "category", "value": "academic", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/community",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Does anyone have notes for Data Structures lecture 5? 📚\",\n  \"category\": \"academic\",\n  \"tags\": [\"DS\", \"notes\", \"help\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Toggle Like Post",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/community/:id/like"
+          }
+        },
+        {
+          "name": "Add Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/community/:id/comment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"I have notes, will share in the group!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/dashboard/stats",
+            "description": "Returns role-aware stats. Admins see system totals; students see personal stats."
+          }
+        }
+      ]
+    }
+  ]
+}

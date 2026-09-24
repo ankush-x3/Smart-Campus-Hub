@@ -1,0 +1,153 @@
+{
+  "folders": [
+    {
+      "name": "📁 Root",
+      "path": "."
+    },
+    {
+      "name": "🖥️ Backend (server)",
+      "path": "server"
+    },
+    {
+      "name": "🎨 Frontend (client)",
+      "path": "client"
+    }
+  ],
+  "settings": {
+    // ── Editor ──────────────────────────────────
+    "editor.fontSize": 14,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.wordWrap": "on",
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": "active",
+    "editor.suggestSelection": "first",
+    "editor.snippetSuggestions": "top",
+    "editor.minimap.enabled": true,
+    "editor.smoothScrolling": true,
+    "editor.cursorBlinking": "smooth",
+    "editor.cursorSmoothCaretAnimation": "on",
+    "editor.linkedEditing": true,
+
+    // ── Files ────────────────────────────────────
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.git": false,
+      "**/dist": true
+    },
+
+    // ── JS / React ───────────────────────────────
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    "javascript.suggest.autoImports": true,
+    "emmet.includeLanguages": {
+      "javascript": "javascriptreact"
+    },
+
+    // ── Tailwind CSS ─────────────────────────────
+    "tailwindCSS.experimental.classRegex": [
+      ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+      ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+    ],
+
+    // ── Terminal ─────────────────────────────────
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.fontSize": 13,
+
+    // ── Git ──────────────────────────────────────
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": true,
+
+    // ── Workbench ────────────────────────────────
+    "workbench.colorTheme": "One Dark Pro",
+    "workbench.iconTheme": "material-icon-theme",
+    "workbench.editor.enablePreview": false,
+    "workbench.startupEditor": "none"
+  },
+  "extensions": {
+    "recommendations": [
+      // ── Core ─────────────────────────────────
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "dsznajder.es7-react-js-snippets",
+      // ── Tailwind ─────────────────────────────
+      "bradlc.vscode-tailwindcss",
+      // ── Git ──────────────────────────────────
+      "eamodio.gitlens",
+      "mhutchie.git-graph",
+      // ── MongoDB ──────────────────────────────
+      "mongodb.mongodb-vscode",
+      // ── REST / API ───────────────────────────
+      "humao.rest-client",
+      // ── Theme ────────────────────────────────
+      "zhuangtongfa.material-theme",
+      "pkief.material-icon-theme",
+      // ── Productivity ─────────────────────────
+      "christian-kohler.path-intellisense",
+      "streetsidesoftware.code-spell-checker",
+      "formulahendry.auto-rename-tag",
+      "naumovs.color-highlight"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "🚀 Launch Backend (nodemon)",
+        "runtimeExecutable": "node",
+        "runtimeArgs": ["-r", "dotenv/config"],
+        "program": "${workspaceFolder:🖥️ Backend (server)}/server.js",
+        "cwd": "${workspaceFolder:🖥️ Backend (server)}",
+        "restart": true,
+        "env": {
+          "NODE_ENV": "development"
+        },
+        "console": "integratedTerminal",
+        "internalConsoleOptions": "neverOpen"
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "🖥️ Start Backend",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": { "cwd": "${workspaceFolder:🖥️ Backend (server)}" },
+        "group": "build",
+        "presentation": { "panel": "new", "name": "Backend" }
+      },
+      {
+        "label": "🎨 Start Frontend",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": { "cwd": "${workspaceFolder:🎨 Frontend (client)}" },
+        "group": "build",
+        "presentation": { "panel": "new", "name": "Frontend" }
+      },
+      {
+        "label": "🌱 Seed Database",
+        "type": "shell",
+        "command": "node seed.js",
+        "options": { "cwd": "${workspaceFolder:🖥️ Backend (server)}" },
+        "group": "test",
+        "presentation": { "panel": "new", "name": "Seeder" }
+      },
+      {
+        "label": "🏗️ Build Frontend",
+        "type": "shell",
+        "command": "npm run build",
+        "options": { "cwd": "${workspaceFolder:🎨 Frontend (client)}" },
+        "group": "build",
+        "presentation": { "panel": "new", "name": "Build" }
+      }
+    ]
+  }
+}
