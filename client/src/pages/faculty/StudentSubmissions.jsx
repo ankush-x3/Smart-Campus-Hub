@@ -1,28 +1,74 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   Download, Filter, Search, CheckCircle, Clock, AlertCircle, FileText 
 } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
 const StudentSubmissions = () => {
   const [selectedCourse, setSelectedCourse] = useState('All');
   const [isGradeModalOpen, setIsGradeModalOpen] = useState(false);
   const [selectedSub, setSelectedSub] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
 
-  // Mock Data
-  const submissions = [
-    { id: 1, student: 'John Doe', assignment: 'Graph Algorithms', course: 'CS301', submittedAt: '2023-11-19 14:30', status: 'pending', grade: null, file: 'graph_algo_jd.pdf' },
-    { id: 2, student: 'Jane Smith', assignment: 'React Basics', course: 'CS101', submittedAt: '2023-11-18 09:15', status: 'graded', grade: 95, file: 'react_assignment.zip' },
-    { id: 3, student: 'Alice Johnson', assignment: 'Binary Trees', course: 'CS201', submittedAt: '2023-11-20 23:50', status: 'pending', grade: null, file: 'trees_alice.py' },
-    { id: 4, student: 'Bob Williams', assignment: 'Graph Algorithms', course: 'CS301', submittedAt: '2023-11-21 10:00', status: 'graded', grade: 82, file: 'algo_hw2.pdf' },
-  ];
+  useEffect(() => {
+    fetchSubmissions();
+  }, []);
 
-  const handleGrade = (e) => {
+  const fetchSubmissions = async () => {
+    try {
+      const res = await api.get('/assignments');
+      const assignments = res.data.data || res.data || [];
+      
+      let allSubs = [];
+      for (const assign of assignments) {
+         try {
+           const subRes = await api.get(`/assignments/${assign._id || assign.id}/submissions`);
+           const subs = subRes.data.data || subRes.data || [];
+           subs.forEach(s => {
+              allSubs.push({
+                 id: s._id || s.id,
+                 assignmentId: assign._id || assign.id,
+                 student: s.student?.name || 'Student',
+                 assignment: assign.title,
+                 course: assign.course?.code || assign.course || 'Course',
+                 submittedAt: s.submittedAt ? new Date(s.submittedAt).toLocaleString() : 'N/A',
+                 status: s.grade != null ? 'graded' : 'pending',
+                 grade: s.grade,
+                 file: s.fileUrl || s.file || 'attachment.pdf'
+              });
+           });
+         } catch(e) {
+           console.error('Error fetching submissions for assignment', assign._id);
+         }
+      }
+      setSubmissions(allSubs);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load submissions');
+    }
+  };
+
+  const handleGrade = async (e) => {
     e.preventDefault();
-    toast.success('Grade submitted successfully!');
-    setIsGradeModalOpen(false);
+    const formData = new FormData(e.target);
+    const grade = formData.get('grade');
+    const feedback = formData.get('feedback');
+
+    try {
+      await api.put(`/assignments/${selectedSub.assignmentId}/grade/${selectedSub.id}`, { 
+        grade: Number(grade), 
+        feedback 
+      });
+      toast.success('Grade submitted successfully!');
+      setIsGradeModalOpen(false);
+      fetchSubmissions();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to submit grade');
+    }
   };
 
   const openGradeModal = (sub) => {
@@ -176,6 +222,7 @@ const StudentSubmissions = () => {
             <label className="text-sm font-medium text-gray-700">Marks (out of 100)</label>
             <input 
               type="number" 
+              name="grade"
               required 
               min="0"
               max="100"
@@ -187,6 +234,7 @@ const StudentSubmissions = () => {
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Feedback (Optional)</label>
             <textarea 
+              name="feedback"
               rows="4" 
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" 
               placeholder="Provide feedback to the student..."
@@ -204,3 +252,5 @@ const StudentSubmissions = () => {
 };
 
 export default StudentSubmissions;
+
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, Users, Calendar, CheckSquare, Clock, AlertCircle, 
   ChevronRight, MoreVertical, Plus, FileText, Bell 
@@ -7,47 +7,79 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, L
 import Badge from '../../components/ui/Badge';
 import EmptyState from '../../components/ui/EmptyState';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import api from '../../utils/api';
 
 const FacultyDashboard = () => {
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Mock API call
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const stats = [
+  const [stats, setStats] = useState([
     { title: 'Total Assignments Posted', value: '24', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100' },
     { title: 'Pending Reviews', value: '45', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100' },
     { title: 'Total Students', value: '180', icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-100' },
     { title: 'Events Organized', value: '3', icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-100' },
-  ];
+  ]);
 
-  const todaysClasses = [
+  const [todaysClasses, setTodaysClasses] = useState([
     { id: 1, time: '09:00 AM - 10:30 AM', course: 'CS101 - Intro to Programming', room: 'Room 301', strength: 60 },
     { id: 2, time: '11:00 AM - 12:30 PM', course: 'CS201 - Data Structures', room: 'Lab 2', strength: 45 },
     { id: 3, time: '02:00 PM - 03:30 PM', course: 'CS301 - Algorithms', room: 'Room 405', strength: 50 },
-  ];
+  ]);
 
-  const assignmentStatusData = [
-    { name: 'Submitted', value: 120, color: '#10b981' }, // emerald-500
-    { name: 'Pending', value: 45, color: '#f59e0b' },  // amber-500
-    { name: 'Overdue', value: 15, color: '#ef4444' },  // red-500
-  ];
+  const [assignmentStatusData, setAssignmentStatusData] = useState([
+    { name: 'Submitted', value: 120, color: '#10b981' },
+    { name: 'Pending', value: 45, color: '#f59e0b' },
+    { name: 'Overdue', value: 15, color: '#ef4444' },
+  ]);
 
-  const recentSubmissions = [
+  const [recentSubmissions, setRecentSubmissions] = useState([
     { id: 1, student: 'John Doe', assignment: 'Graph Algorithms Implementation', time: '10 mins ago', status: 'pending', course: 'CS301' },
     { id: 2, student: 'Jane Smith', assignment: 'Binary Tree Traversal', time: '1 hour ago', status: 'pending', course: 'CS201' },
     { id: 3, student: 'Alice Johnson', assignment: 'Graph Algorithms Implementation', time: '2 hours ago', status: 'graded', course: 'CS301' },
     { id: 4, student: 'Bob Williams', assignment: 'React Basics', time: '3 hours ago', status: 'pending', course: 'CS101' },
-  ];
+  ]);
 
-  const myCourses = [
+  const [myCourses, setMyCourses] = useState([
     { id: 'CS101', title: 'Intro to Programming', enrolled: 60, schedule: 'Mon, Wed 09:00 AM' },
     { id: 'CS201', title: 'Data Structures', enrolled: 45, schedule: 'Tue, Thu 11:00 AM' },
     { id: 'CS301', title: 'Algorithms', enrolled: 50, schedule: 'Mon, Fri 02:00 PM' },
-  ];
+  ]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [statsRes, coursesRes, assignmentsRes] = await Promise.all([
+          api.get('/dashboard/stats').catch(() => null),
+          api.get('/courses').catch(() => null),
+          api.get('/assignments').catch(() => null)
+        ]);
+
+        if (statsRes && statsRes.data) {
+          const sd = statsRes.data;
+          setStats([
+            { title: 'Total Assignments Posted', value: sd.totalAssignments || '24', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100' },
+            { title: 'Pending Reviews', value: sd.pendingReviews || '45', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100' },
+            { title: 'Total Students', value: sd.totalStudents || '180', icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+            { title: 'Events Organized', value: sd.eventsOrganized || '3', icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-100' },
+          ]);
+        }
+        
+        if (coursesRes && coursesRes.data && true && coursesRes.data.length > 0) {
+          setMyCourses((coursesRes.data.data || coursesRes.data).map(c => ({
+            id: c._id || c.id,
+            title: c.title || 'Course',
+            enrolled: c.enrolled || 0,
+            schedule: c.schedule || 'TBA'
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   if (loading) {
     return (
@@ -227,3 +259,4 @@ const FacultyDashboard = () => {
 };
 
 export default FacultyDashboard;
+

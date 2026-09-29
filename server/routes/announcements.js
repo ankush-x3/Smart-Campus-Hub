@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Announcement = require('../models/Announcement');
+const AuditLog = require('../models/AuditLog');
 const { protect, authorize } = require('../middleware/auth');
 
 // @route   GET /api/announcements
@@ -11,14 +12,22 @@ router.get('/', async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const startIndex = (page - 1) * limit;
+    
+    let query = {};
+    if (req.query.category && req.query.category !== 'all') {
+      query.category = req.query.category;
+    }
+    if (req.query.search) {
+      query.title = { $regex: req.query.search, $options: 'i' };
+    }
 
-    const announcements = await Announcement.find()
-      .populate('author', 'name avatar')
+    const announcements = await Announcement.find(query)
+      .populate('author', 'name role department')
       .sort({ isPinned: -1, createdAt: -1 })
       .skip(startIndex)
       .limit(limit);
 
-    const total = await Announcement.countDocuments();
+    const total = await Announcement.countDocuments(query);
 
     res.status(200).json({
       success: true,
@@ -64,8 +73,18 @@ router.get('/:id', async (req, res, next) => {
 // @access  Private (faculty, admin)
 router.post('/', protect, authorize('faculty', 'admin'), async (req, res, next) => {
   try {
-    req.body.author = req.user.id;
+    req.body.author = req.user._id || req.user.id;
     const announcement = await Announcement.create(req.body);
+    
+    if (req.user.role === 'admin') {
+      await AuditLog.create({
+        action: 'Announcement Created',
+        details: `Created announcement: ${announcement.title}`,
+        user: req.user.id,
+        type: 'notice'
+      });
+    }
+
     res.status(201).json({
       success: true,
       data: announcement
@@ -107,8 +126,8 @@ router.put('/:id', protect, authorize('faculty', 'admin'), async (req, res, next
 
 // @route   DELETE /api/announcements/:id
 // @desc    Delete announcement
-// @access  Private (admin)
-router.delete('/:id', protect, authorize('admin'), async (req, res, next) => {
+// @access  Private (admin, faculty)
+router.delete('/:id', protect, authorize('admin', 'faculty'), async (req, res, next) => {
   try {
     const announcement = await Announcement.findById(req.params.id);
 
@@ -116,7 +135,18 @@ router.delete('/:id', protect, authorize('admin'), async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Announcement not found' });
     }
 
+    if (announcement.author.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(401).json({ success: false, message: 'Not authorized to delete this announcement' });
+    }
+
     await announcement.deleteOne();
+
+    await AuditLog.create({
+      action: 'Announcement Deleted',
+      details: `Deleted announcement: ${announcement.title}`,
+      user: req.user.id,
+      type: 'notice'
+    });
 
     res.status(200).json({
       success: true,

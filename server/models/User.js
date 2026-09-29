@@ -30,6 +30,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: 'default.jpg'
   },
+  profileImage: { type: String, default: '' },
   department: {
     type: String
   },
@@ -43,7 +44,7 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+}, { timestamps: true });
 
 // Encrypt password using bcrypt
 UserSchema.pre('save', async function(next) {

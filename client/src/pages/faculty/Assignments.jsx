@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, Filter, MoreVertical, Edit2, Trash2, 
   Eye, FileText, CheckCircle, XCircle, Clock, Calendar as CalendarIcon
@@ -7,6 +7,7 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
 const FacultyAssignments = () => {
   const [activeTab, setActiveTab] = useState('All');
@@ -14,20 +15,25 @@ const FacultyAssignments = () => {
   const [isSubmissionsModalOpen, setIsSubmissionsModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   
-  // Mock Data
-  const assignments = [
-    { id: 1, title: 'Graph Algorithms Implementation', course: 'CS301', dueDate: '2023-11-20T23:59:00', totalMarks: 100, submitted: 45, total: 50, status: 'Active' },
-    { id: 2, title: 'Binary Tree Traversal', course: 'CS201', dueDate: '2023-11-15T23:59:00', totalMarks: 50, submitted: 45, total: 45, status: 'Closed' },
-    { id: 3, title: 'React Basics', course: 'CS101', dueDate: '2023-11-25T23:59:00', totalMarks: 100, submitted: 10, total: 60, status: 'Active' },
-    { id: 4, title: 'Database Design Project', course: 'CS401', dueDate: '2023-10-30T23:59:00', totalMarks: 200, submitted: 30, total: 30, status: 'Closed' },
-  ];
-
-  const submissions = [
+  const [assignments, setAssignments] = useState([]);
+  const [submissions, setSubmissions] = useState([
     { id: 1, student: 'John Doe', submittedAt: '2023-11-19 14:30', status: 'submitted', marks: null },
     { id: 2, student: 'Jane Smith', submittedAt: '2023-11-18 09:15', status: 'graded', marks: 95 },
     { id: 3, student: 'Alice Johnson', submittedAt: '-', status: 'overdue', marks: null },
     { id: 4, student: 'Bob Williams', submittedAt: '2023-11-20 23:50', status: 'submitted', marks: null },
-  ];
+  ]);
+
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      try {
+        const res = await api.get('/assignments');
+        setAssignments((res.data.data || res.data).map(a => ({ ...a, id: a._id || a.id })));
+      } catch (error) {
+        console.error('Failed to fetch assignments:', error);
+      }
+    };
+    fetchAssignments();
+  }, []);
 
   const filteredAssignments = assignments.filter(a => activeTab === 'All' ? true : a.status === activeTab);
 
@@ -37,22 +43,54 @@ const FacultyAssignments = () => {
     total: assignments.length
   };
 
-  const handleCreateAssignment = (e) => {
+  const handleCreateAssignment = async (e) => {
     e.preventDefault();
-    toast.success('Assignment created successfully!');
-    setIsCreateModalOpen(false);
+    const formData = new FormData(e.target);
+    const data = {
+      title: formData.get('title'),
+      course: formData.get('course'),
+      totalMarks: Number(formData.get('totalMarks')),
+      dueDate: formData.get('dueDate'),
+      description: formData.get('description'),
+      attachmentUrl: formData.get('attachmentUrl'),
+      status: 'Active',
+      submitted: 0,
+      total: 0 // Mock total students
+    };
+    
+    try {
+      const res = await api.post('/assignments', data);
+      setAssignments([...assignments, { ...res.data, id: res.data._id || res.data.id }]);
+      toast.success('Assignment created successfully!');
+      setIsCreateModalOpen(false);
+    } catch (err) {
+      toast.error('Failed to create assignment');
+    }
   };
 
   const handleGradeSubmit = (studentId) => {
     toast.success(`Grades saved successfully!`);
   };
 
-  const handleDelete = (id) => {
-    toast.success('Assignment deleted');
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/assignments/${id}`);
+      setAssignments(assignments.filter(a => a.id !== id));
+      toast.success('Assignment deleted');
+    } catch (err) {
+      toast.error('Failed to delete assignment');
+    }
   };
 
-  const handleClose = (id) => {
-    toast.success('Assignment closed');
+  const handleClose = async (id) => {
+    try {
+      const assignment = assignments.find(a => a.id === id);
+      const res = await api.put(`/assignments/${id}`, { ...assignment, status: 'Closed' });
+      setAssignments(assignments.map(a => a.id === id ? { ...res.data, id: res.data._id || res.data.id } : a));
+      toast.success('Assignment closed');
+    } catch (err) {
+      toast.error('Failed to close assignment');
+    }
   };
 
   return (
@@ -190,12 +228,12 @@ const FacultyAssignments = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1 md:col-span-2">
               <label className="text-sm font-medium text-gray-700">Assignment Title</label>
-              <input type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="e.g., Final Project Proposal" />
+              <input name="title" type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="e.g., Final Project Proposal" />
             </div>
             
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Course</label>
-              <select required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <select name="course" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
                 <option value="">Select Course...</option>
                 <option value="CS101">CS101 - Intro to Programming</option>
                 <option value="CS201">CS201 - Data Structures</option>
@@ -205,22 +243,22 @@ const FacultyAssignments = () => {
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Total Marks</label>
-              <input type="number" required min="0" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="e.g., 100" />
+              <input name="totalMarks" type="number" required min="0" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="e.g., 100" />
             </div>
 
             <div className="space-y-1 md:col-span-2">
               <label className="text-sm font-medium text-gray-700">Due Date & Time</label>
-              <input type="datetime-local" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input name="dueDate" type="datetime-local" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
 
             <div className="space-y-1 md:col-span-2">
               <label className="text-sm font-medium text-gray-700">Description</label>
-              <textarea rows="4" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Provide detailed instructions..."></textarea>
+              <textarea name="description" rows="4" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Provide detailed instructions..."></textarea>
             </div>
 
             <div className="space-y-1 md:col-span-2">
               <label className="text-sm font-medium text-gray-700">Attachment URL (Optional)</label>
-              <input type="url" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="https://..." />
+              <input name="attachmentUrl" type="url" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="https://..." />
             </div>
           </div>
           
@@ -293,3 +331,4 @@ const FacultyAssignments = () => {
 };
 
 export default FacultyAssignments;
+

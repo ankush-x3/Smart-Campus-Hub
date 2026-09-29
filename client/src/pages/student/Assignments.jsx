@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Book, Clock, CheckCircle, AlertCircle, UploadCloud, FileText } from 'lucide-react';
 import api from '../../utils/api';
 import Badge from '../../components/ui/Badge';
@@ -20,15 +20,15 @@ export default function Assignments() {
   useEffect(() => {
     const fetchAssignments = async () => {
       try {
-        const res = await api.get('/student/assignments');
-        setAssignments(res.data);
+        const res = await api.get('/assignments');
+                setAssignments((res.data.data || res.data).map(a => ({
+          ...a, 
+          id: a._id || a.id,
+          course: a.course?.title || 'Unknown Course',
+          faculty: a.faculty?.name || 'Unknown Faculty'
+        })));
       } catch (err) {
-        setAssignments([
-          { id: 1, title: 'Implement Binary Search Tree', course: 'Data Structures', faculty: 'Dr. Smith', dueDate: '2026-10-15', totalMarks: 100, status: 'Pending', daysLeft: 3 },
-          { id: 2, title: 'TCP/IP Model Essay', course: 'Computer Networks', faculty: 'Prof. Johnson', dueDate: '2026-10-10', totalMarks: 50, status: 'Overdue', daysLeft: -2 },
-          { id: 3, title: 'SQL Joins Practice', course: 'Database Systems', faculty: 'Dr. Lee', dueDate: '2026-10-05', totalMarks: 100, status: 'Submitted', daysLeft: 0, marks: 95, feedback: 'Excellent work!' },
-          { id: 4, title: 'React Hooks Project', course: 'Web Development', faculty: 'Mr. White', dueDate: '2026-10-20', totalMarks: 100, status: 'Pending', daysLeft: 8 },
-        ]);
+        toast.error('Failed to fetch assignments');
       } finally {
         setLoading(false);
       }
@@ -51,16 +51,23 @@ export default function Assignments() {
     overdue: assignments.filter(a => a.status === 'Overdue').length
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!submitFile) {
       toast.error('Please select a file to submit.');
       return;
     }
-    toast.success('Assignment submitted successfully!');
-    setAssignments(assignments.map(a => a.id === selectedAssignment.id ? { ...a, status: 'Submitted' } : a));
-    setIsSubmitModalOpen(false);
-    setSubmitFile(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', submitFile);
+      await api.post(`/assignments/${selectedAssignment.id}/submit`, formData);
+      toast.success('Assignment submitted successfully!');
+      setAssignments(assignments.map(a => a.id === selectedAssignment.id ? { ...a, status: 'Submitted' } : a));
+      setIsSubmitModalOpen(false);
+      setSubmitFile(null);
+    } catch (err) {
+      toast.error('Failed to submit assignment');
+    }
   };
 
   if (loading) return <div className="p-8"><LoadingSpinner /></div>;
@@ -228,3 +235,4 @@ export default function Assignments() {
     </div>
   );
 }
+

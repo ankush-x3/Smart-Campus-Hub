@@ -12,59 +12,46 @@ const { protect } = require('../middleware/auth');
 // @access  Private
 router.get('/stats', protect, async (req, res, next) => {
   try {
-    let data = {};
+    const Announcement = require('../models/Announcement');
+    const Event = require('../models/Event');
+    const Complaint = require('../models/Complaint');
+    const User = require('../models/User');
+    const Assignment = require('../models/Assignment');
 
     if (req.user.role === 'admin') {
-      const users = await User.countDocuments();
-      const events = await Event.countDocuments();
-      const courses = await Course.countDocuments();
-      const announcements = await Announcement.countDocuments();
-      
-      const pendingComplaints = await Complaint.countDocuments({ status: 'pending' });
-      const resolvedComplaints = await Complaint.countDocuments({ status: 'resolved' });
-
-      data = {
-        users,
-        events,
-        courses,
-        announcements,
-        complaints: {
-          pending: pendingComplaints,
-          resolved: resolvedComplaints
-        }
-      };
-    } else if (req.user.role === 'student') {
-      const enrolledCourses = await Course.find({ enrolledStudents: req.user.id });
-      const registeredEvents = await Event.find({ registeredUsers: req.user.id });
-      const myComplaints = await Complaint.find({ submittedBy: req.user.id });
-
-      data = {
-        enrolledCoursesCount: enrolledCourses.length,
-        registeredEventsCount: registeredEvents.length,
-        complaintsCount: myComplaints.length,
-        enrolledCourses,
-        registeredEvents,
-        myComplaints
-      };
-    } else if (req.user.role === 'faculty') {
-      const myCourses = await Course.find({ instructor: req.user.id });
-      const myEvents = await Event.find({ organizer: req.user.id });
-      const myAnnouncements = await Announcement.find({ author: req.user.id });
-
-      data = {
-        myCoursesCount: myCourses.length,
-        myEventsCount: myEvents.length,
-        myAnnouncementsCount: myAnnouncements.length
-      };
+      const [totalUsers, totalStudents, totalFaculty, totalEvents, totalAnnouncements, totalComplaints, pendingComplaints] = await Promise.all([
+        User.countDocuments(),
+        User.countDocuments({ role: 'student' }),
+        User.countDocuments({ role: 'faculty' }),
+        Event.countDocuments(),
+        Announcement.countDocuments(),
+        Complaint.countDocuments(),
+        Complaint.countDocuments({ status: 'pending' })
+      ]);
+      return res.json({ success: true, data: { totalUsers, totalStudents, totalFaculty, totalEvents, totalAnnouncements, totalComplaints, pendingComplaints } });
     }
 
-    res.status(200).json({
-      success: true,
-      data
-    });
-  } catch (err) {
-    next(err);
-  }
+    if (req.user.role === 'faculty') {
+      const [myAssignments, myEvents, totalStudents] = await Promise.all([
+        Assignment.countDocuments({ faculty: req.user._id || req.user.id }),
+        Event.countDocuments({ organizer: req.user._id || req.user.id }),
+        User.countDocuments({ role: 'student' })
+      ]);
+      const assignments = await Assignment.find({ faculty: req.user._id || req.user.id });
+      const pendingReviews = assignments.reduce((acc, a) => acc + (a.submissions ? a.submissions.filter(s => s.status === 'submitted').length : 0), 0);
+      return res.json({ success: true, data: { myAssignments, myEvents, totalStudents, pendingReviews } });
+    }
+
+    // student
+    const userId = req.user._id || req.user.id;
+    const [myComplaints, registeredEvents, totalNotices, enrolledCourses] = await Promise.all([
+      Complaint.countDocuments({ submittedBy: userId }),
+      Event.countDocuments({ registeredUsers: userId }),
+      Announcement.countDocuments(),
+      Course.countDocuments({ enrolledStudents: userId })
+    ]);
+    return res.json({ success: true, data: { myComplaints, registeredEvents, unreadNotices: totalNotices, enrolledCourses } });
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

@@ -3,27 +3,36 @@ import { User, Mail, Phone, BookOpen, Shield, Download, Camera, QrCode } from 'l
 import Badge from '../../components/ui/Badge';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
 export default function Profile() {
   const [activeTab, setActiveTab] = useState('Overview');
   const tabs = ['Overview', 'Edit Profile', 'Security', 'QR Card'];
 
-  const student = {
-    name: 'Alex Johnson',
-    id: 'STU2024001',
-    email: 'alex.j@university.edu',
-    phone: '+1 (555) 123-4567',
-    department: 'Computer Science',
-    year: '3rd Year',
-    role: 'Student',
-    stats: {
-      courses: 6,
-      events: 12,
-      complaints: 2,
-      posts: 15
-    }
-  };
+  const [student, setStudent] = useState({ stats: {} });
 
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get('/auth/me');
+        const res = response.data;
+        setStudent({
+          ...res,
+          name: res.name || 'User',
+          id: res.studentId || res._id,
+          email: res.email || '',
+          phone: res.phone || '',
+          department: res.department || '',
+          year: res.year || '',
+          role: res.role || 'Student',
+          stats: res.stats || { courses: 0, events: 0, complaints: 0, posts: 0 }
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchProfile();
+  }, []);
   return (
     <div className="space-y-6 animate-in fade-in p-6 max-w-5xl mx-auto">
       {/* Cover & Header */}

@@ -20,43 +20,52 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await api.get('/student/dashboard');
-        setData(res.data);
-      } catch (err) {
-        // Fallback to mock data
+        // Fetch real stats
+        const statsRes = await api.get('/dashboard/stats');
+        const statsData = statsRes.data.data || {};
+        
+        // Fetch recent announcements
+        const noticesRes = await api.get('/announcements').catch(() => ({ data: { data: [] } }));
+        const noticesData = noticesRes.data?.data || [];
+        
+        // Fetch recent events
+        const eventsRes = await api.get('/events').catch(() => ({ data: { data: [] } }));
+        const eventsData = eventsRes.data?.data || [];
+
+        // Fetch recent assignments
+        const assignmentsRes = await api.get('/assignments').catch(() => ({ data: { data: [] } }));
+        const assignmentsData = assignmentsRes.data?.data || [];
+        
+        // Fetch user info for name
+        const authRes = await api.get('/auth/me').catch(() => ({ data: { data: { name: 'Student' } } }));
+        const authData = authRes.data?.data || { name: 'Student' };
+
+        const mapId = (arr) => arr?.map(item => ({...item, id: item._id || item.id})) || [];
+        
         setData({
-          name: 'Alex',
+          name: authData.name,
           stats: {
-            activeCourses: 6,
-            upcomingDeadlines: 3,
-            eventsRegistered: 2,
-            unreadNotices: 5
+            activeCourses: statsData.enrolledCourses || 0,
+            upcomingDeadlines: assignmentsData.length || 0,
+            eventsRegistered: statsData.registeredEvents || 0,
+            unreadNotices: statsData.unreadNotices || 0
           },
-          todaySchedule: [
-            { id: 1, time: '09:00 AM', course: 'Data Structures', room: 'Room 301', faculty: 'Dr. Smith', type: 'Lecture' },
-            { id: 2, time: '11:00 AM', course: 'Computer Networks', room: 'Lab 2', faculty: 'Prof. Johnson', type: 'Lab' },
-            { id: 3, time: '02:00 PM', course: 'Database Systems', room: 'Room 405', faculty: 'Dr. Lee', type: 'Lecture' }
-          ],
-          recentAssignments: [
-            { id: 1, subject: 'Data Structures', title: 'Binary Trees Implementation', daysLeft: 2, status: 'pending' },
-            { id: 2, subject: 'Computer Networks', title: 'Socket Programming', daysLeft: 5, status: 'pending' },
-            { id: 3, subject: 'Database Systems', title: 'SQL Queries', daysLeft: -1, status: 'submitted' }
-          ],
-          upcomingEvents: [
-            { id: 1, title: 'Tech Symposium 2026', date: 'Oct 15, 2026', location: 'Main Auditorium' },
-            { id: 2, title: 'Coding Bootcamp', date: 'Oct 18, 2026', location: 'Lab 1' },
-            { id: 3, title: 'Career Fair', date: 'Oct 20, 2026', location: 'Campus Grounds' }
-          ],
-          recentNotices: [
-            { id: 1, category: 'Urgent', title: 'Mid-term schedule released', date: 'Today' },
-            { id: 2, category: 'Academic', title: 'Library timings extended', date: 'Yesterday' },
-            { id: 3, category: 'Event', title: 'Annual Fest registration open', date: '2 days ago' }
-          ],
+          todaySchedule: [],
+          recentAssignments: mapId(assignmentsData.slice(0, 3)),
+          upcomingEvents: mapId(eventsData.slice(0, 3)),
+          recentNotices: mapId(noticesData.slice(0, 3)),
           studyHours: [
-            { name: 'Mon', hours: 4 }, { name: 'Tue', hours: 3 }, { name: 'Wed', hours: 5 },
-            { name: 'Thu', hours: 2 }, { name: 'Fri', hours: 6 }, { name: 'Sat', hours: 4 }, { name: 'Sun', hours: 2 }
+            { name: 'Mon', hours: 2 },
+            { name: 'Tue', hours: 4 },
+            { name: 'Wed', hours: 3 },
+            { name: 'Thu', hours: 5 },
+            { name: 'Fri', hours: 2 },
+            { name: 'Sat', hours: 6 },
+            { name: 'Sun', hours: 4 }
           ]
         });
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to fetch dashboard data');
       } finally {
         setLoading(false);
       }
@@ -65,7 +74,7 @@ export default function Dashboard() {
   }, []);
 
   if (loading) return <div className="p-8"><LoadingSpinner /></div>;
-  if (!data) return <div className="p-8"><EmptyState message="Failed to load dashboard" /></div>;
+  if (!data) return <div className="p-8"><EmptyState icon={AlertCircle} title="Failed to load dashboard" description="There was an error loading your dashboard data." /></div>;
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -89,7 +98,7 @@ export default function Dashboard() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-xl font-bold mb-4 flex items-center"><Activity className="mr-2 text-indigo-600" /> Today's Schedule</h2>
         {data.todaySchedule.length === 0 ? (
-          <EmptyState message="No classes scheduled for today." />
+          <EmptyState icon={BookOpen} title="No classes today" description="You have no classes scheduled for today." />
         ) : (
           <div className="space-y-4">
             {data.todaySchedule.map(cls => (

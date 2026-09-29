@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Search, Filter, Pin, Eye, Calendar, User, Paperclip, ChevronDown, ChevronUp } from 'lucide-react';
 import api from '../../utils/api';
 import Badge from '../../components/ui/Badge';
@@ -21,16 +21,21 @@ export default function Notices() {
   useEffect(() => {
     const fetchNotices = async () => {
       try {
-        const res = await api.get('/student/notices');
-        setNotices(res.data);
+        const res = await api.get('/announcements');
+                setNotices((res.data.data || res.data).map(n => ({
+          ...n, 
+          id: n._id || n.id,
+          title: n.title || 'Untitled',
+          content: n.content || '',
+          author: n.author?.name || 'Unknown Author',
+          category: n.category ? n.category.charAt(0).toUpperCase() + n.category.slice(1) : 'General',
+          daysAgo: Math.floor((new Date() - new Date(n.createdAt)) / (1000 * 60 * 60 * 24)) || 0,
+          views: n.views || 0,
+          isPinned: !!n.isPinned,
+          isRead: false
+        })));
       } catch (err) {
-        setNotices([
-          { id: 1, title: 'Mid-Semester Examination Schedule', category: 'Exam', author: 'Examination Cell', date: '2026-10-10', daysAgo: 0, views: 342, content: 'The mid-semester examinations will commence from 25th October. Please find the detailed schedule attached.', hasAttachment: true, isPinned: true, isRead: false },
-          { id: 2, title: 'Campus Drive: Google', category: 'Event', author: 'Placement Cell', date: '2026-10-09', daysAgo: 1, views: 512, content: 'Google is visiting our campus for hiring software engineers. All final year students with CGPA > 8.0 are eligible.', hasAttachment: false, isPinned: true, isRead: true },
-          { id: 3, title: 'Library Timings Update', category: 'General', author: 'Chief Librarian', date: '2026-10-08', daysAgo: 2, views: 120, content: 'The central library will remain open 24/7 during the examination weeks.', hasAttachment: false, isPinned: false, isRead: false },
-          { id: 4, title: 'URGENT: Server Maintenance', category: 'Urgent', author: 'IT Helpdesk', date: '2026-10-05', daysAgo: 5, views: 890, content: 'The student portal will be down for maintenance from 2 AM to 4 AM on Sunday.', hasAttachment: false, isPinned: false, isRead: true },
-          { id: 5, title: 'Submission of Assignments', category: 'Academic', author: 'Prof. Davis', date: '2026-10-01', daysAgo: 9, views: 45, content: 'All students are reminded to submit their lab assignments by the end of this week.', hasAttachment: true, isPinned: false, isRead: true },
-        ]);
+        toast.error(err.response?.data?.message || 'Failed to fetch notices');
       } finally {
         setLoading(false);
       }
@@ -201,3 +206,4 @@ function NoticeCard({ notice, isExpanded, onToggle, getCategoryColor, isPinned }
     </div>
   );
 }
+

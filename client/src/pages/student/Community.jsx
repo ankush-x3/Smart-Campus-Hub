@@ -1,33 +1,56 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Heart, MessageCircle, Share2, Image as ImageIcon, Send, MoreHorizontal } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
 export default function Community() {
-  const [posts, setPosts] = useState([
-    {
-      id: 1, author: 'Sarah Jenkins', role: 'Student (3rd Year)', time: '2 hours ago',
-      content: 'Just finished my AI project! The new TensorFlow features are mind-blowing. Anyone else experimenting with neural networks this semester? 🚀',
-      tags: ['AI', 'Project', 'Tech'], likes: 24, comments: 5, category: 'Academic', isLiked: false
-    },
-    {
-      id: 2, author: 'David Chen', role: 'Student (1st Year)', time: '5 hours ago',
-      content: 'Lost my blue water bottle near the central library. If anyone finds it, please DM me! 🙏',
-      tags: ['LostFound'], likes: 3, comments: 1, category: 'Lost & Found', isLiked: true
-    },
-    {
-      id: 3, author: 'Tech Club', role: 'Student Organization', time: '1 day ago',
-      content: 'Don\'t forget our weekly meetup tomorrow at 5 PM in Lab 1. We\'ll be discussing open-source contributions. Pizza provided! 🍕',
-      image: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80&w=800',
-      tags: ['Meetup', 'OpenSource'], likes: 156, comments: 12, category: 'Events', isLiked: false
-    }
-  ]);
+  const [posts, setPosts] = useState([]);
 
+  React.useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      const res = await api.get('/community');
+      setPosts((res.data.data || res.data || []).map(p => ({
+        ...p,
+        id: p._id,
+        author: p.author?.name || 'Unknown User',
+        role: p.author?.role || 'Student',
+        time: new Date(p.createdAt).toLocaleDateString(),
+        likes: p.likes?.length || 0,
+        comments: p.comments?.length || 0,
+        isLiked: p.likes?.includes('current-user-id') // Assuming user auth could provide this, omitting for now
+      })));
+    } catch (err) {
+      console.error(err);
+    }
+  };
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const categories = ['All', 'General', 'Academic', 'Events', 'Sports', 'Lost & Found', 'Marketplace'];
+
+    const handleCreatePost = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const content = formData.get('content');
+    const category = formData.get('category') || 'general';
+    const tagsString = formData.get('tags');
+    const tags = tagsString ? tagsString.split(',').map(t => t.trim()) : [];
+    
+    try {
+      const res = await api.post('/community', { content, category, tags });
+      toast.success('Post published!');
+      setIsPostModalOpen(false);
+      fetchPosts();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create post');
+    }
+  };
 
   const toggleLike = (id) => {
     setPosts(posts.map(p => {
@@ -131,8 +154,10 @@ export default function Community() {
       </div>
 
       <Modal isOpen={isPostModalOpen} onClose={() => setIsPostModalOpen(false)} title="Create Post">
-        <form onSubmit={(e) => { e.preventDefault(); toast.success('Post published!'); setIsPostModalOpen(false); }} className="p-2 space-y-4">
+        <form onSubmit={handleCreatePost} className="p-2 space-y-4">
           <textarea 
+            name="content"
+            required
             rows={4} 
             placeholder="What's on your mind?" 
             className="w-full border-none outline-none resize-none text-lg placeholder:text-slate-400 focus:ring-0 p-0"
@@ -140,16 +165,21 @@ export default function Community() {
           ></textarea>
           
           <div className="border border-slate-200 rounded-xl p-3 flex flex-col gap-3">
-            <select className="w-full border-none outline-none text-sm text-slate-700 bg-transparent cursor-pointer">
+            <select name="category" className="w-full border-none outline-none text-sm text-slate-700 bg-transparent cursor-pointer">
               <option value="" disabled selected>Select Category</option>
-              {categories.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
+              <option value="general">General</option>
+              <option value="academic">Academic</option>
+              <option value="events">Events</option>
+              <option value="sports">Sports</option>
+              <option value="lost-found">Lost & Found</option>
+              <option value="marketplace">Marketplace</option>
             </select>
             <div className="h-px bg-slate-100 w-full"></div>
-            <input type="text" placeholder="Add tags (comma separated)" className="w-full border-none outline-none text-sm placeholder:text-slate-400" />
+            <input type="text" name="tags" placeholder="Add tags (comma separated)" className="w-full border-none outline-none text-sm placeholder:text-slate-400" />
           </div>
 
           <div className="border border-slate-200 rounded-xl p-4 flex items-center justify-between bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors">
-            <span className="text-sm font-semibold text-slate-700 flex items-center"><ImageIcon className="w-5 h-5 mr-2 text-emerald-500" /> Add Photo</span>
+            <span className="text-sm font-semibold text-slate-700 flex items-center"><ImageIcon className="w-5 h-5 mr-2 text-emerald-500" /> Add Photo (coming soon)</span>
           </div>
 
           <button type="submit" className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center hover:bg-indigo-700 transition-colors">
@@ -160,3 +190,5 @@ export default function Community() {
     </div>
   );
 }
+
+

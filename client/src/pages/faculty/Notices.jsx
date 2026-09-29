@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { 
   Bell, Plus, Search, Edit2, Trash2, Pin, Eye, Calendar, Tag
 } from 'lucide-react';
@@ -6,39 +6,86 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
 const FacultyNotices = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNotice, setEditingNotice] = useState(null);
-  
-  // Mock Data
-  const [notices, setNotices] = useState([
-    { id: 1, title: 'Mid-term Examination Schedule Published', category: 'Academic', date: '2023-11-01', views: 145, isPinned: true, content: 'Please find attached the schedule...' },
-    { id: 2, title: 'Guest Lecture on AI Ethics', category: 'Event', date: '2023-11-05', views: 89, isPinned: false, content: 'Join us for a lecture by Dr. Smith...' },
-    { id: 3, title: 'Lab Equipment Maintenance', category: 'General', date: '2023-11-10', views: 56, isPinned: false, content: 'Lab 3 will be closed on Friday.' },
-  ]);
+  const [notices, setNotices] = useState([]);
+
+  React.useEffect(() => {
+    const fetchNotices = async () => {
+      try {
+        const res = await api.get('/announcements');
+                setNotices((res.data.data || res.data).map(n => ({
+          ...n, 
+          id: n._id || n.id,
+          title: n.title || 'Untitled',
+          category: n.category ? n.category.charAt(0).toUpperCase() + n.category.slice(1) : 'General',
+          date: new Date(n.createdAt).toLocaleDateString()
+        })));
+      } catch (error) {
+        console.error('Failed to fetch notices:', error);
+      }
+    };
+    fetchNotices();
+  }, []);
 
   const handleOpenModal = (notice = null) => {
     setEditingNotice(notice);
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success(editingNotice ? 'Notice updated successfully!' : 'Notice posted successfully!');
-    setIsModalOpen(false);
-  };
+    const formData = new FormData(e.target);
+    const noticeData = {
+      title: formData.get('title'),
+      category: formData.get('category'),
+      content: formData.get('content'),
+      isPinned: formData.get('isPinned') === 'on'
+    };
 
-  const handleDelete = (id) => {
-    if(window.confirm('Are you sure you want to delete this notice?')) {
-      setNotices(notices.filter(n => n.id !== id));
-      toast.success('Notice deleted');
+    try {
+      if (editingNotice) {
+        const res = await api.put(`/announcements/${editingNotice.id}`, noticeData);
+        const updatedNotice = res.data;
+        setNotices(notices.map(n => n.id === editingNotice.id ? { ...updatedNotice, id: updatedNotice._id || updatedNotice.id } : n));
+        toast.success('Notice updated successfully!');
+      } else {
+        const res = await api.post('/announcements', noticeData);
+        const newNotice = res.data;
+        setNotices([...notices, { ...newNotice, id: newNotice._id || newNotice.id }]);
+        toast.success('Notice posted successfully!');
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      toast.error('Failed to save notice');
     }
   };
 
-  const togglePin = (id) => {
-    setNotices(notices.map(n => n.id === id ? { ...n, isPinned: !n.isPinned } : n));
-    toast.success('Pin status updated');
+  const handleDelete = async (id) => {
+    if(window.confirm('Are you sure you want to delete this notice?')) {
+      try {
+        await api.delete(`/announcements/${id}`);
+        setNotices(notices.filter(n => n.id !== id));
+        toast.success('Notice deleted');
+      } catch (error) {
+        toast.error('Failed to delete notice');
+      }
+    }
+  };
+
+  const togglePin = async (id) => {
+    const notice = notices.find(n => n.id === id);
+    if (!notice) return;
+    try {
+      const res = await api.put(`/announcements/${id}`, { ...notice, isPinned: !notice.isPinned });
+      setNotices(notices.map(n => n.id === id ? { ...n, isPinned: !n.isPinned } : n));
+      toast.success('Pin status updated');
+    } catch (error) {
+      toast.error('Failed to update pin status');
+    }
   };
 
   return (
@@ -154,6 +201,7 @@ const FacultyNotices = () => {
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Title</label>
             <input 
+              name="title"
               type="text" 
               required 
               defaultValue={editingNotice?.title || ''}
@@ -165,6 +213,7 @@ const FacultyNotices = () => {
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Category</label>
             <select 
+              name="category"
               required
               defaultValue={editingNotice?.category || ''}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
@@ -180,6 +229,7 @@ const FacultyNotices = () => {
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Content</label>
             <textarea 
+              name="content"
               rows="5" 
               required
               defaultValue={editingNotice?.content || ''}
@@ -190,6 +240,7 @@ const FacultyNotices = () => {
 
           <div className="flex items-center gap-2">
             <input 
+              name="isPinned"
               type="checkbox" 
               id="isPinned" 
               defaultChecked={editingNotice?.isPinned || false}
@@ -211,3 +262,5 @@ const FacultyNotices = () => {
 };
 
 export default FacultyNotices;
+
+

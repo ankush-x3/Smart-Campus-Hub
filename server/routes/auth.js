@@ -11,6 +11,8 @@ const sendTokenResponse = (user, statusCode, res) => {
     expiresIn: process.env.JWT_EXPIRE || '30d'
   });
 
+  user.password = undefined;
+
   res.status(statusCode).json({
     success: true,
     token,
@@ -98,26 +100,17 @@ router.get('/me', protect, async (req, res, next) => {
 // @access  Private
 router.put('/profile', protect, async (req, res, next) => {
   try {
-    const fieldsToUpdate = {
-      name: req.body.name,
-      department: req.body.department,
-      year: req.body.year,
-      phone: req.body.phone,
-      avatar: req.body.avatar
-    };
-
-    const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
-      new: true,
-      runValidators: true
+    const allowedFields = ['name', 'department', 'year', 'phone', 'profileImage'];
+    const updates = {};
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
-
-    res.status(200).json({
-      success: true,
-      data: user
-    });
-  } catch (err) {
-    next(err);
-  }
+    if (updates.name && updates.name.trim() === '') {
+      return res.status(400).json({ success: false, message: 'Name cannot be empty' });
+    }
+    const user = await User.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true });
+    res.json({ success: true, data: user });
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

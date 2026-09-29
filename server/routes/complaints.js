@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Complaint = require('../models/Complaint');
+const AuditLog = require('../models/AuditLog');
 const { protect, authorize } = require('../middleware/auth');
 
 // @route   GET /api/complaints
@@ -96,6 +97,13 @@ router.put('/:id/status', protect, authorize('admin'), async (req, res, next) =>
     complaint = await Complaint.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true
+    });
+    
+    await AuditLog.create({
+      action: 'Complaint Status Changed',
+      details: `Complaint ${complaint._id} status updated to ${req.body.status}`,
+      user: req.user.id,
+      type: 'complaint'
     });
 
     res.status(200).json({

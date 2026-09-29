@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, BookOpen, Calendar, Bell, AlertTriangle, Activity,
-  TrendingUp, CheckCircle, Database, Server, HardDrive 
+  Database, Server, HardDrive, Shield
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -9,61 +9,56 @@ import {
 } from 'recharts';
 import Badge from '../../components/ui/Badge';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import SystemSettingsModal from './SettingsModal';
+import ReportModal from './ReportModal';
+import api from '../../utils/api';
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
+  
+  // Modals state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+
+  const navigate = useNavigate();
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/admin/dashboard');
+      if (res.data.success) {
+        setData(res.data.data);
+      }
+    } catch (err) {
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
+    fetchDashboardData();
   }, []);
 
-  const stats = [
-    { title: 'Total Users', value: '2,845', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { title: 'Students', value: '2,500', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-    { title: 'Faculty', value: '320', icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-    { title: 'Events', value: '45', icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-100' },
-    { title: 'Announcements', value: '128', icon: Bell, color: 'text-amber-600', bg: 'bg-amber-100' },
-    { title: 'Complaints', value: '12', icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-100' },
-  ];
-
-  const userRegistrationData = [
-    { name: 'Jan', users: 120 }, { name: 'Feb', users: 150 }, { name: 'Mar', users: 180 },
-    { name: 'Apr', users: 140 }, { name: 'May', users: 210 }, { name: 'Jun', users: 250 },
-  ];
-
-  const roleDistributionData = [
-    { name: 'Students', value: 2500, color: '#4f46e5' }, // indigo-600
-    { name: 'Faculty', value: 320, color: '#10b981' }, // emerald-500
-    { name: 'Admin', value: 25, color: '#e11d48' },   // rose-600
-  ];
-
-  const dailyActiveUsers = [
-    { day: 'Mon', active: 1800 }, { day: 'Tue', active: 2100 }, { day: 'Wed', active: 2300 },
-    { day: 'Thu', active: 2200 }, { day: 'Fri', active: 1900 }, { day: 'Sat', active: 800 }, { day: 'Sun', active: 600 },
-  ];
-
-  const recentActivity = [
-    { id: 1, action: 'User Registration', details: 'New student account created (CS21045)', time: '5 mins ago', type: 'user' },
-    { id: 2, action: 'System Alert', details: 'Database backup completed successfully', time: '1 hour ago', type: 'system' },
-    { id: 3, action: 'Complaint Resolved', details: 'Hostel WiFi issue marked as resolved by Admin_02', time: '2 hours ago', type: 'complaint' },
-    { id: 4, action: 'Event Published', details: 'Annual Tech Fest 2023 published by Faculty_JD', time: '4 hours ago', type: 'event' },
-    { id: 5, action: 'Notice Posted', details: 'Mid-term schedule published for CS Dept', time: '5 hours ago', type: 'notice' },
-  ];
-
-  const complaints = [
-    { id: 'C-101', title: 'Library AC not working', status: 'Pending', priority: 'High' },
-    { id: 'C-102', title: 'Hostel Mess Food Quality', status: 'In Progress', priority: 'Medium' },
-    { id: 'C-103', title: 'Lab computers software update', status: 'Resolved', priority: 'Low' },
-  ];
-
-  if (loading) {
+  if (loading || !data) {
     return (
       <div className="flex justify-center items-center h-64">
         <LoadingSpinner size="lg" className="text-rose-600" />
       </div>
     );
   }
+
+  const stats = [
+    { title: 'Total Users', value: data.totalUsers, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { title: 'Students', value: data.totalStudents, icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+    { title: 'Faculty', value: data.totalFaculty, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+    { title: 'Events', value: data.totalEvents, icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-100' },
+    { title: 'Announcements', value: data.totalAnnouncements, icon: Bell, color: 'text-amber-600', bg: 'bg-amber-100' },
+    { title: 'Complaints', value: data.totalComplaints, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-100' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -76,10 +71,16 @@ const AdminDashboard = () => {
           <p className="text-gray-500 mt-1">Monitor platform health and user activity.</p>
         </div>
         <div className="flex gap-2">
-          <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 font-medium transition-colors">
+          <button 
+            onClick={() => setIsReportOpen(true)}
+            className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 font-medium transition-colors"
+          >
             Generate Report
           </button>
-          <button className="bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 font-medium transition-colors">
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 font-medium transition-colors"
+          >
             System Settings
           </button>
         </div>
@@ -107,7 +108,7 @@ const AdminDashboard = () => {
               <h2 className="text-lg font-bold text-gray-900 mb-4">User Registrations (6 Months)</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={userRegistrationData}>
+                  <BarChart data={data.userRegistrationData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
@@ -123,7 +124,7 @@ const AdminDashboard = () => {
               <h2 className="text-lg font-bold text-gray-900 mb-4">Daily Active Users</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dailyActiveUsers}>
+                  <LineChart data={data.dailyActiveUsers}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
@@ -135,9 +136,8 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* System Health & Complaints */}
+          {/* System Health */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* System Health */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">System Health</h2>
               <div className="space-y-4">
@@ -157,30 +157,42 @@ const AdminDashboard = () => {
                 </div>
                 <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg bg-slate-50">
                   <div className="flex items-center gap-3">
-                    <HardDrive className="w-5 h-5 text-amber-500" />
-                    <span className="font-medium text-gray-700">Storage (85%)</span>
+                    <Shield className="w-5 h-5 text-indigo-500" />
+                    <span className="font-medium text-gray-700">Auth Service</span>
                   </div>
-                  <Badge variant="warning">Warning</Badge>
+                  <Badge variant="success">Secure</Badge>
                 </div>
               </div>
             </div>
 
-            {/* Top Complaints */}
+            {/* Role Distribution Chart */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-gray-900">Recent Complaints</h2>
-                <button className="text-sm text-rose-600 font-medium hover:text-rose-700">View All</button>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Role Distribution</h2>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={data.roleDistributionData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {data.roleDistributionData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-              <div className="space-y-3">
-                {complaints.map(comp => (
-                  <div key={comp.id} className="p-3 border border-slate-100 rounded-lg flex justify-between items-center">
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 mb-0.5">{comp.id}</p>
-                      <p className="font-medium text-gray-900 text-sm">{comp.title}</p>
-                    </div>
-                    <Badge variant={comp.status === 'Resolved' ? 'success' : comp.status === 'In Progress' ? 'warning' : 'danger'}>
-                      {comp.status}
-                    </Badge>
+              <div className="flex justify-center gap-4 mt-2">
+                {data.roleDistributionData.map(role => (
+                  <div key={role.name} className="flex items-center gap-1 text-sm text-gray-600">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: role.color }} />
+                    {role.name}
                   </div>
                 ))}
               </div>
@@ -188,52 +200,61 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Right Sidebar */}
+        {/* Right Sidebar - Activity Feed */}
         <div className="space-y-6">
-          {/* Role Distribution */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">User Roles</h2>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={roleDistributionData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value">
-                    {roleDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-gray-900">Recent Activity</h2>
+              <button onClick={fetchDashboardData} className="text-sm text-rose-600 hover:text-rose-700 font-medium">Refresh</button>
             </div>
-            <div className="flex justify-center gap-4 mt-2">
-              {roleDistributionData.map(role => (
-                <div key={role.name} className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: role.color}}></div>
-                  {role.name}
+            <div className="space-y-6">
+              {data.recentActivity && data.recentActivity.length > 0 ? data.recentActivity.map((activity, index) => (
+                <div key={activity._id || index} className="flex gap-4 relative">
+                  {index !== data.recentActivity.length - 1 && (
+                    <div className="absolute top-8 left-4 bottom-[-24px] w-0.5 bg-slate-100" />
+                  )}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${
+                    activity.type === 'user' ? 'bg-blue-100 text-blue-600' :
+                    activity.type === 'system' || activity.type === 'setting' ? 'bg-indigo-100 text-indigo-600' :
+                    activity.type === 'complaint' ? 'bg-amber-100 text-amber-600' :
+                    activity.type === 'event' ? 'bg-purple-100 text-purple-600' :
+                    'bg-emerald-100 text-emerald-600'
+                  }`}>
+                    <Activity className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{activity.action}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{activity.details}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-gray-400">{new Date(activity.time).toLocaleString()}</span>
+                      <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">by {activity.user}</span>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm text-gray-500 text-center py-4">No recent activity found.</p>
+              )}
             </div>
           </div>
-
-          {/* Activity Feed */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex-1">
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-rose-600" />
-              Activity Feed
+          
+          {/* Action Required Box */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-sm">
+            <h2 className="text-lg font-bold mb-4 flex items-center justify-between">
+              Action Required
+              <Badge variant="warning">{data.pendingComplaints} Pending</Badge>
             </h2>
-            <div className="space-y-4">
-              {recentActivity.map(activity => (
-                <div key={activity.id} className="relative pl-6 pb-4 border-l-2 border-slate-100 last:border-0 last:pb-0">
-                  <div className="absolute left-[-5px] top-1 w-2 h-2 rounded-full bg-rose-500 ring-4 ring-white"></div>
-                  <p className="text-sm font-semibold text-gray-900">{activity.action}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">{activity.details}</p>
-                  <p className="text-xs text-gray-400 mt-1">{activity.time}</p>
-                </div>
-              ))}
-            </div>
+            <button 
+              onClick={() => navigate('/admin/complaints')}
+              className="w-full mt-4 bg-white text-slate-900 rounded-lg py-2 text-sm font-semibold hover:bg-slate-100 transition-colors"
+            >
+              Go to Help Desk
+            </button>
           </div>
         </div>
       </div>
+
+      <SystemSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <ReportModal isOpen={isReportOpen} onClose={() => setIsReportOpen(false)} />
     </div>
   );
 };

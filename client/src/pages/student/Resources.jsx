@@ -26,15 +26,10 @@ export default function Resources() {
   useEffect(() => {
     const fetchResources = async () => {
       try {
-        const res = await api.get('/student/resources');
-        setResources(res.data);
+        const res = await api.get('/resources');
+        setResources((res.data.data || res.data).map(r => ({ ...r, id: r._id || r.id })));
       } catch (err) {
-        setResources([
-          { id: 1, name: 'Computer Lab 3', type: 'Lab', capacity: 40, building: 'Block A', isAvailable: true, amenities: ['PCs', 'Projector', 'AC', 'Whiteboard'], icon: 'Monitor' },
-          { id: 2, name: 'Seminar Hall 1', type: 'Auditorium', capacity: 150, building: 'Block C', isAvailable: false, amenities: ['Projector', 'PA System', 'AC'], icon: 'Users' },
-          { id: 3, name: 'Meeting Room B', type: 'Meeting Room', capacity: 10, building: 'Block B', isAvailable: true, amenities: ['TV', 'Whiteboard', 'AC'], icon: 'DoorOpen' },
-          { id: 4, name: 'Classroom 301', type: 'Classroom', capacity: 60, building: 'Block A', isAvailable: true, amenities: ['Projector', 'Whiteboard'], icon: 'Building2' },
-        ]);
+        toast.error('Failed to fetch resources');
       } finally {
         setLoading(false);
       }
@@ -51,17 +46,22 @@ export default function Resources() {
     }
   };
 
-  const handleBook = (e) => {
+  const handleBook = async (e) => {
     e.preventDefault();
     if (!bookingDate || !selectedSlot) {
       toast.error('Please select date and time slot.');
       return;
     }
-    toast.success(`Booked ${selectedResource.name} successfully!`);
-    setIsModalOpen(false);
-    setSelectedResource(null);
-    setBookingDate('');
-    setSelectedSlot(null);
+    try {
+      await api.post(`/resources/${selectedResource.id}/book`, { date: bookingDate, timeSlot: selectedSlot });
+      toast.success(`Booked ${selectedResource.name} successfully!`);
+      setIsModalOpen(false);
+      setSelectedResource(null);
+      setBookingDate('');
+      setSelectedSlot(null);
+    } catch (err) {
+      toast.error('Failed to book resource');
+    }
   };
 
   const filteredResources = resources.filter(r => tab === 'All' || r.type === tab);

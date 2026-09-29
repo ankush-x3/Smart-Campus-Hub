@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   Monitor, Book, MapPin, Calendar, Clock, Users, 
   CheckCircle, XCircle, Search, Filter 
@@ -7,26 +7,72 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
 const FacultyResources = () => {
   const [activeTab, setActiveTab] = useState('All');
-  
-  // Mock Data
-  const resources = [
-    { id: 1, name: 'Main Auditorium', type: 'Venue', capacity: 500, location: 'Block A', status: 'Available', icon: MapPin },
-    { id: 2, name: 'Projector Pro-X', type: 'Equipment', capacity: null, location: 'IT Dept', status: 'Booked', icon: Monitor },
-    { id: 3, name: 'Seminar Hall 2', type: 'Venue', capacity: 120, location: 'Block B', status: 'Available', icon: MapPin },
-    { id: 4, name: 'Library Conference Room', type: 'Room', capacity: 20, location: 'Central Library', status: 'Maintenance', icon: Book },
-  ];
+  const [resources, setResources] = useState([]);
+  const [bookings, setBookings] = useState([]);
 
-  const bookings = [
-    { id: 101, resourceName: 'Seminar Hall 2', requestedBy: 'John Student', date: '2023-11-25', time: '10:00 AM - 12:00 PM', purpose: 'Club Meeting', status: 'Pending' },
-    { id: 102, resourceName: 'Projector Pro-X', requestedBy: 'Alice Scholar', date: '2023-11-26', time: '02:00 PM - 04:00 PM', purpose: 'Presentation', status: 'Approved' },
-    { id: 103, resourceName: 'Main Auditorium', requestedBy: 'Tech Club', date: '2023-12-01', time: '09:00 AM - 05:00 PM', purpose: 'Annual Hackathon', status: 'Pending' },
-  ];
+  useEffect(() => {
+    fetchResources();
+  }, []);
 
-  const handleAction = (id, action) => {
-    toast.success(`Booking ${action} successfully!`);
+  const fetchResources = async () => {
+    try {
+      const res = await api.get('/resources');
+      const data = res.data.data || res.data;
+      
+      const mappedResources = data.map(r => ({
+        id: r._id || r.id,
+        name: r.name,
+        type: r.type || 'Venue',
+        capacity: r.capacity,
+        location: r.location || 'Campus',
+        status: r.status || 'Available',
+        icon: r.type === 'Equipment' ? Monitor : (r.type === 'Room' ? Book : MapPin)
+      }));
+      setResources(mappedResources);
+
+      let allBookings = [];
+      data.forEach(resource => {
+        if (resource.slots) {
+          resource.slots.forEach(slot => {
+            if (slot.status && slot.status !== 'Available') {
+              allBookings.push({
+                id: slot._id || slot.id,
+                resourceId: resource._id || resource.id,
+                resourceName: resource.name,
+                requestedBy: slot.bookedBy?.name || 'Student',
+                date: slot.startTime ? new Date(slot.startTime).toLocaleDateString() : 'N/A',
+                time: slot.startTime && slot.endTime ? `${new Date(slot.startTime).toLocaleTimeString()} - ${new Date(slot.endTime).toLocaleTimeString()}` : 'N/A',
+                purpose: slot.purpose || 'Booking',
+                status: slot.status
+              });
+            }
+          });
+        }
+      });
+      setBookings(allBookings);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load resources');
+    }
+  };
+
+  const handleAction = async (id, action) => {
+    const booking = bookings.find(b => b.id === id);
+    if (!booking) return;
+    try {
+      await api.put(`/resources/${booking.resourceId}/book/${booking.id}/status`, {
+        status: action === 'approved' ? 'Approved' : 'Rejected'
+      });
+      toast.success(`Booking ${action} successfully!`);
+      fetchResources();
+    } catch (error) {
+      console.error(error);
+      toast.error(`Failed to ${action} booking`);
+    }
   };
 
   return (
@@ -172,3 +218,5 @@ const FacultyResources = () => {
 };
 
 export default FacultyResources;
+
+

@@ -35,6 +35,7 @@ import AdminEvents from './pages/admin/EventManagement';
 import AdminResources from './pages/admin/ResourceManagement';
 import AdminComplaints from './pages/admin/ComplaintManagement';
 import AdminAnalytics from './pages/admin/Analytics';
+import AdminProfile from './pages/admin/Profile';
 
 // Notifications
 import { NotificationProvider } from './context/NotificationContext';
@@ -143,6 +144,7 @@ const App = () => {
           <Route path="resources" element={<AdminResources />} />
           <Route path="complaints" element={<AdminComplaints />} />
           <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="profile" element={<AdminProfile />} />
         </Route>
 
         {/* Fallback */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   Calendar, MapPin, Clock, Users, Plus, Edit2, Trash2, Search, Filter 
 } from 'lucide-react';
@@ -6,56 +6,87 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
 const FacultyEvents = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAttendeesModalOpen, setIsAttendeesModalOpen] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   
-  // Mock Data
-  const [events, setEvents] = useState([
-    { 
-      id: 1, 
-      title: 'Workshop on Machine Learning', 
-      date: '2023-12-05', 
-      endDate: '2023-12-05',
-      time: '10:00 AM - 04:00 PM', 
-      location: 'Computer Lab 1', 
-      category: 'Workshop',
-      maxAttendees: 50,
-      registered: 42,
-      status: 'Upcoming'
-    },
-    { 
-      id: 2, 
-      title: 'Guest Lecture: Future of AI', 
-      date: '2023-12-10', 
-      endDate: '2023-12-10',
-      time: '02:00 PM - 03:30 PM', 
-      location: 'Main Auditorium', 
-      category: 'Lecture',
-      maxAttendees: 200,
-      registered: 185,
-      status: 'Upcoming'
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const res = await api.get('/events');
+      const data = res.data.data || res.data;
+      
+      const mappedEvents = data.map(e => ({
+        id: e._id || e.id,
+        title: e.title,
+        date: e.startDate ? new Date(e.startDate).toLocaleDateString() : 'N/A',
+        endDate: e.endDate ? new Date(e.endDate).toLocaleDateString() : 'N/A',
+        time: e.startDate && e.endDate ? `${new Date(e.startDate).toLocaleTimeString()} - ${new Date(e.endDate).toLocaleTimeString()}` : 'N/A',
+        location: e.location || 'Campus',
+        category: e.category || 'Event',
+        maxAttendees: e.capacity || 100,
+        registered: e.attendees ? e.attendees.length : 0,
+        status: e.status || 'Upcoming',
+        attendees: e.attendees || []
+      }));
+      setEvents(mappedEvents);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load events');
     }
-  ]);
+  };
 
-  const attendees = [
-    { id: 1, name: 'John Doe', rollNo: 'CS21001', email: 'john@example.com' },
-    { id: 2, name: 'Jane Smith', rollNo: 'CS21002', email: 'jane@example.com' },
-    { id: 3, name: 'Alice Johnson', rollNo: 'CS21003', email: 'alice@example.com' },
-  ];
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success('Event created successfully!');
-    setIsModalOpen(false);
-  };
+    const formData = new FormData(e.target);
+    const newEvent = {
+      title: formData.get('title'),
+      category: formData.get('category'),
+      location: formData.get('location'),
+      startDate: formData.get('startDate'),
+      endDate: formData.get('endDate'),
+      capacity: parseInt(formData.get('maxAttendees')),
+      description: formData.get('description'),
+      imageUrl: formData.get('imageUrl')
+    };
 
-  const handleDelete = (id) => {
-    if(window.confirm('Are you sure you want to cancel this event?')) {
-      toast.success('Event cancelled');
+    try {
+      await api.post('/events', newEvent);
+      toast.success('Event created successfully!');
+      setIsModalOpen(false);
+      fetchEvents();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to create event');
     }
   };
+
+  const handleDelete = async (id) => {
+    if(window.confirm('Are you sure you want to cancel this event?')) {
+      try {
+        await api.delete(`/events/${id}`);
+        toast.success('Event cancelled');
+        fetchEvents();
+      } catch (error) {
+        console.error(error);
+        toast.error('Failed to cancel event');
+      }
+    }
+  };
+
+  const openAttendeesModal = (event) => {
+    setSelectedEvent(event);
+    setIsAttendeesModalOpen(true);
+  };
+
+  const attendees = selectedEvent?.attendees || [];
 
   return (
     <div className="space-y-6">
@@ -115,7 +146,7 @@ const FacultyEvents = () => {
 
               <div className="grid grid-cols-2 gap-2 mt-auto">
                 <button 
-                  onClick={() => setIsAttendeesModalOpen(true)}
+                  onClick={() => openAttendeesModal(event)}
                   className="py-2 border border-emerald-600 text-emerald-600 rounded-lg hover:bg-emerald-50 font-medium transition-colors"
                 >
                   Attendees
@@ -148,12 +179,12 @@ const FacultyEvents = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1 md:col-span-2">
               <label className="text-sm font-medium text-gray-700">Event Title</label>
-              <input type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input type="text" name="title" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
             
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Category</label>
-              <select required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <select name="category" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
                 <option value="Workshop">Workshop</option>
                 <option value="Lecture">Guest Lecture</option>
                 <option value="Seminar">Seminar</option>
@@ -163,32 +194,32 @@ const FacultyEvents = () => {
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Location</label>
-              <input type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input type="text" name="location" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Start Date</label>
-              <input type="date" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input type="date" name="startDate" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">End Date</label>
-              <input type="date" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input type="date" name="endDate" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Max Attendees</label>
-              <input type="number" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input type="number" name="maxAttendees" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Image URL</label>
-              <input type="url" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input type="url" name="imageUrl" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
 
             <div className="space-y-1 md:col-span-2">
               <label className="text-sm font-medium text-gray-700">Description</label>
-              <textarea rows="4" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+              <textarea name="description" rows="4" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
             </div>
           </div>
           
@@ -238,3 +269,5 @@ const FacultyEvents = () => {
 };
 
 export default FacultyEvents;
+
+

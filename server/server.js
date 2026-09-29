@@ -16,6 +16,9 @@ const dashboard = require('./routes/dashboard');
 const assignments = require('./routes/assignments');
 const notifications = require('./routes/notifications');
 const community = require('./routes/community');
+const users = require('./routes/users');
+const lostfound = require('./routes/lostfound');
+const admin = require('./routes/admin');
 
 // Connect to database
 connectDB();
@@ -46,6 +49,9 @@ app.use('/api/dashboard', dashboard);
 app.use('/api/assignments', assignments);
 app.use('/api/notifications', notifications);
 app.use('/api/community', community);
+app.use('/api/users', users);
+app.use('/api/lostfound', lostfound);
+app.use('/api/admin', admin);
 
 // Error handler middleware
 app.use(errorHandler);

@@ -1,23 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api from '../utils/api';
 import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext(null);
-
-const MOCK_NOTIFICATIONS = [
-  { id: 1, type: 'assignment', title: 'New Assignment', message: 'Math 101 Assignment posted', time: new Date(Date.now() - 5000).toISOString(), read: false },
-  { id: 2, type: 'event', title: 'Campus Event', message: 'Annual Fest registration open', time: new Date(Date.now() - 3600000).toISOString(), read: false },
-  { id: 3, type: 'notice', title: 'Holiday Notice', message: 'College closed on Friday', time: new Date(Date.now() - 86400000).toISOString(), read: true },
-];
 
 export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   
-  const fetchNotifications = useCallback(() => {
+  const fetchNotifications = useCallback(async () => {
     if (!user) return;
-    // In a real app, this would be an API call
-    // For now, we use mock data if empty
-    setNotifications(prev => prev.length ? prev : [...MOCK_NOTIFICATIONS]);
+    try {
+      const res = await api.get('/notifications');
+      if (res.data && res.data.success) {
+        setNotifications(res.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -26,26 +26,30 @@ export const NotificationProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const markRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const markRead = async (id) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+    } catch (error) {
+      console.error('Failed to mark read:', error);
+    }
   };
 
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const markAllRead = async () => {
+    try {
+      await api.put('/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (error) {
+      console.error('Failed to mark all read:', error);
+    }
   };
 
   const addNotification = (notification) => {
-    const newNotif = {
-      ...notification,
-      id: Date.now(),
-      time: new Date().toISOString(),
-      read: false
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-    // Show toast here if you have a toast system
-    console.log("New Notification:", newNotif.title);
+    // Note: in a real app this might be triggered by WebSockets.
+    // For now we just refetch
+    fetchNotifications();
   };
 
   return (

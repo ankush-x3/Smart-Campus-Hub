@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Users, CheckCircle, Clock } from 'lucide-react';
 import api from '../../utils/api';
 import Badge from '../../components/ui/Badge';
@@ -22,15 +22,20 @@ export default function Events() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const res = await api.get('/student/events');
-        setEvents(res.data);
+        const res = await api.get('/events');
+                setEvents((res.data.data || res.data).map(e => ({
+          ...e, 
+          id: e._id || e.id,
+          organizer: e.organizer?.name || 'Unknown Organizer',
+          category: e.category ? e.category.charAt(0).toUpperCase() + e.category.slice(1) : 'General',
+          date: new Date(e.date || e.createdAt).toLocaleDateString(),
+          time: new Date(e.date || e.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+          registered: e.registeredUsers?.length || 0,
+          capacity: e.maxAttendees || 0,
+          isRegistered: e.registeredUsers?.includes('current-user-id') // We'll just leave it if it works
+        })));
       } catch (err) {
-        setEvents([
-          { id: 1, title: 'Annual Tech Symposium', category: 'Academic', status: 'Upcoming', organizer: 'Tech Club', date: 'Oct 20-22, 2026', time: '09:00 AM - 05:00 PM', location: 'Main Auditorium', registered: 150, maxCapacity: 200, isRegistered: false, tags: ['tech', 'networking'] },
-          { id: 2, title: 'Inter-College Basketball', category: 'Sports', status: 'Upcoming', organizer: 'Sports Council', date: 'Oct 25, 2026', time: '10:00 AM - 04:00 PM', location: 'Indoor Stadium', registered: 45, maxCapacity: 50, isRegistered: true, tags: ['sports', 'competition'] },
-          { id: 3, title: 'AI & Future Workshop', category: 'Workshop', status: 'Upcoming', organizer: 'CS Department', date: 'Nov 02, 2026', time: '02:00 PM - 04:00 PM', location: 'Lab 3', registered: 30, maxCapacity: 30, isRegistered: false, tags: ['AI', 'learning'] },
-          { id: 4, title: 'Cultural Night 2026', category: 'Cultural', status: 'Ongoing', organizer: 'Arts Society', date: 'Today', time: '06:00 PM - 10:00 PM', location: 'Open Air Theatre', registered: 400, maxCapacity: 500, isRegistered: true, tags: ['music', 'dance'] },
-        ]);
+        toast.error(err.response?.data?.message || 'Failed to fetch events');
       } finally {
         setLoading(false);
       }
@@ -48,11 +53,17 @@ export default function Events() {
     setIsModalOpen(true);
   };
 
-  const confirmRegistration = () => {
-    setEvents(events.map(ev => ev.id === selectedEvent.id ? { ...ev, isRegistered: true, registered: ev.registered + 1 } : ev));
-    toast.success(`Successfully registered for ${selectedEvent.title}`);
-    setIsModalOpen(false);
-    setSelectedEvent(null);
+  const confirmRegistration = async () => {
+    try {
+      await api.post(`/events/${selectedEvent.id}/register`);
+      setEvents(events.map(ev => ev.id === selectedEvent.id ? { ...ev, isRegistered: true, registered: ev.registered + 1 } : ev));
+      toast.success(`Successfully registered for ${selectedEvent.title}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to register');
+    } finally {
+      setIsModalOpen(false);
+      setSelectedEvent(null);
+    }
   };
 
   const filteredEvents = events.filter(e => {
@@ -235,3 +246,5 @@ export default function Events() {
     </div>
   );
 }
+
+

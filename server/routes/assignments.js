@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Assignment = require('../models/Assignment');
+const AuditLog = require('../models/AuditLog');
 const { protect } = require('../middleware/auth');
 
 // @route   GET /api/assignments
@@ -62,6 +63,14 @@ router.post('/', protect, async (req, res, next) => {
     }
     
     const assignment = await Assignment.create(req.body);
+    
+    await AuditLog.create({
+      action: 'Assignment Created',
+      details: `Created assignment: ${assignment.title}`,
+      user: req.user.id,
+      type: 'system'
+    });
+    
     res.status(201).json({ success: true, data: assignment, message: 'Assignment created successfully' });
   } catch (error) {
     next(error);
@@ -106,6 +115,14 @@ router.delete('/:id', protect, async (req, res, next) => {
     }
     
     await assignment.deleteOne();
+    
+    await AuditLog.create({
+      action: 'Assignment Deleted',
+      details: `Deleted assignment: ${assignment.title}`,
+      user: req.user.id,
+      type: 'system'
+    });
+    
     res.status(200).json({ success: true, data: {}, message: 'Assignment deleted successfully' });
   } catch (error) {
     next(error);
@@ -182,6 +199,14 @@ router.put('/:id/grade/:submissionId', protect, async (req, res, next) => {
     submission.status = 'graded';
     
     await assignment.save();
+    
+    await AuditLog.create({
+      action: 'Assignment Graded',
+      details: `Graded submission for assignment: ${assignment.title}`,
+      user: req.user.id,
+      type: 'system'
+    });
+    
     res.status(200).json({ success: true, data: assignment, message: 'Submission graded successfully' });
   } catch (error) {
     next(error);

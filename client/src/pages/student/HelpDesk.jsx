@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Paperclip } from 'lucide-react';
 import api from '../../utils/api';
 import Badge from '../../components/ui/Badge';
@@ -17,14 +17,10 @@ export default function HelpDesk() {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const res = await api.get('/student/helpdesk');
-        setTickets(res.data);
+        const res = await api.get('/complaints');
+        setTickets((res.data.data || res.data).map(t => ({ ...t, id: t._id || t.id })));
       } catch (err) {
-        setTickets([
-          { id: 'TKT-001', title: 'WiFi in Hostel A not working', category: 'IT Support', status: 'In Progress', priority: 'High', date: 'Oct 10, 2026', comments: 3, description: 'The wifi on the 3rd floor of Hostel A has been down since yesterday evening.' },
-          { id: 'TKT-002', title: 'Request for ID Card Replacement', category: 'Admin', status: 'Resolved', priority: 'Medium', date: 'Oct 05, 2026', comments: 1, description: 'Lost my ID card in the library. Need a replacement.' },
-          { id: 'TKT-003', title: 'Leaking tap in chemistry lab', category: 'Maintenance', status: 'Pending', priority: 'Low', date: 'Oct 12, 2026', comments: 0, description: 'Sink tap at station 4 is leaking continuously.' },
-        ]);
+        toast.error('Failed to fetch tickets');
       } finally {
         setLoading(false);
       }
@@ -52,6 +48,38 @@ export default function HelpDesk() {
       case 'High': return 'bg-rose-100 text-rose-700';
       case 'Medium': return 'bg-amber-100 text-amber-700';
       default: return 'bg-slate-100 text-slate-700';
+    }
+  };
+
+  const handleNewTicket = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {
+      title: formData.get('title'),
+      category: formData.get('category'),
+      priority: formData.get('priority'),
+      description: formData.get('description')
+    };
+    try {
+      const res = await api.post('/complaints', data);
+      const newTicket = { ...res.data, id: res.data._id || res.data.id };
+      setTickets([newTicket, ...tickets]);
+      toast.success('Ticket submitted successfully!');
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error('Failed to submit ticket');
+    }
+  };
+
+  const handleComment = async (e) => {
+    e.preventDefault();
+    const text = e.target.comment.value;
+    try {
+      await api.post(`/complaints/${selectedTicket.id}/comment`, { text });
+      toast.success('Comment added');
+      e.target.reset();
+    } catch (err) {
+      toast.error('Failed to add comment');
     }
   };
 
@@ -128,34 +156,34 @@ export default function HelpDesk() {
 
       {/* New Ticket Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Submit New Ticket">
-        <form onSubmit={(e) => { e.preventDefault(); toast.success('Ticket submitted successfully!'); setIsModalOpen(false); }} className="p-2 space-y-4">
+        <form onSubmit={handleNewTicket} className="p-2 space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">Issue Title</label>
-            <input type="text" required className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Brief summary of the issue" />
+            <input type="text" name="title" required className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Brief summary of the issue" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Category</label>
-              <select className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                <option>IT Support</option>
-                <option>Maintenance</option>
-                <option>Admin</option>
-                <option>Hostel</option>
-                <option>Academics</option>
+              <select name="category" className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                <option value="infrastructure">Infrastructure</option>
+                <option value="transport">Transport</option>
+                <option value="other">Other</option>
+                <option value="hostel">Hostel</option>
+                <option value="academic">Academic</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Priority</label>
-              <select className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
+              <select name="priority" className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
               </select>
             </div>
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">Description</label>
-            <textarea required rows={4} className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Provide detailed information about the issue..."></textarea>
+            <textarea name="description" required rows={4} className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Provide detailed information about the issue..."></textarea>
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">Attachment (Optional)</label>
@@ -221,10 +249,10 @@ export default function HelpDesk() {
             </div>
 
             <div className="bg-slate-50 -mx-6 -mb-6 p-6 border-t border-slate-200">
-              <div className="flex gap-2">
-                <input type="text" className="flex-1 border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Add a comment..." />
-                <button className="px-5 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Send</button>
-              </div>
+              <form onSubmit={handleComment} className="flex gap-2">
+                <input type="text" name="comment" required className="flex-1 border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Add a comment..." />
+                <button type="submit" className="px-5 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Send</button>
+              </form>
             </div>
           </div>
         </Modal>
@@ -232,3 +260,4 @@ export default function HelpDesk() {
     </div>
   );
 }
+

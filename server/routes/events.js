@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
+const AuditLog = require('../models/AuditLog');
 const { protect, authorize } = require('../middleware/auth');
 
 // @route   GET /api/events
@@ -8,17 +9,18 @@ const { protect, authorize } = require('../middleware/auth');
 // @access  Public
 router.get('/', async (req, res, next) => {
   try {
-    let query;
     const reqQuery = { ...req.query };
-    
-    // Fields to exclude
-    const removeFields = ['select', 'sort', 'page', 'limit'];
+    const removeFields = ['select', 'sort', 'page', 'limit', 'search'];
     removeFields.forEach(param => delete reqQuery[param]);
-
     let queryStr = JSON.stringify(reqQuery);
-    query = Event.find(JSON.parse(queryStr)).populate('organizer', 'name');
+    let parsedQuery = JSON.parse(queryStr);
 
-    const events = await query;
+    if (req.query.search) {
+      parsedQuery.title = { $regex: req.query.search, $options: 'i' };
+    }
+
+    const events = await Event.find(parsedQuery).populate('organizer', 'name');
+
     res.status(200).json({
       success: true,
       count: events.length,
@@ -58,6 +60,16 @@ router.post('/', protect, authorize('faculty', 'admin'), async (req, res, next) 
   try {
     req.body.organizer = req.user.id;
     const event = await Event.create(req.body);
+    
+    if (req.user.role === 'admin') {
+      await AuditLog.create({
+        action: 'Event Created',
+        details: `Created event: ${event.title}`,
+        user: req.user.id,
+        type: 'event'
+      });
+    }
+
     res.status(201).json({
       success: true,
       data: event
@@ -154,13 +166,17 @@ router.put('/:id', protect, authorize('faculty', 'admin'), async (req, res, next
 
 // @route   DELETE /api/events/:id
 // @desc    Delete event
-// @access  Private (admin)
-router.delete('/:id', protect, authorize('admin'), async (req, res, next) => {
+// @access  Private (admin, faculty)
+router.delete('/:id', protect, authorize('admin', 'faculty'), async (req, res, next) => {
   try {
     const event = await Event.findById(req.params.id);
     
     if (!event) {
       return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    if (event.organizer.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(401).json({ success: false, message: 'Not authorized to delete this event' });
     }
 
     await event.deleteOne();

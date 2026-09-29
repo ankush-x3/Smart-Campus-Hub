@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -6,58 +6,50 @@ import { Calendar as CalendarIcon, Clock, MapPin, Tag } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import clsx from 'clsx';
+import api from '../../utils/api';
 
 const localizer = momentLocalizer(moment);
 
 export default function Calendar() {
   const [selectedEvent, setSelectedEvent] = useState(null);
 
-  // Mock events
-  const events = [
-    {
-      id: 1,
-      title: 'Data Structures Lecture',
-      start: new Date(new Date().setHours(9, 0, 0, 0)),
-      end: new Date(new Date().setHours(10, 30, 0, 0)),
-      type: 'class',
-      location: 'Room 301',
-      faculty: 'Dr. Smith'
-    },
-    {
-      id: 2,
-      title: 'Database Systems Lab',
-      start: new Date(new Date().setHours(14, 0, 0, 0)),
-      end: new Date(new Date().setHours(16, 0, 0, 0)),
-      type: 'class',
-      location: 'Lab 2',
-      faculty: 'Prof. Johnson'
-    },
-    {
-      id: 3,
-      title: 'Binary Tree Assignment Due',
-      start: new Date(new Date().setHours(23, 59, 0, 0)),
-      end: new Date(new Date().setHours(23, 59, 0, 0)),
-      type: 'assignment',
-      course: 'Data Structures'
-    },
-    {
-      id: 4,
-      title: 'Mid-term Examination: OS',
-      start: moment().add(2, 'days').set({hour: 10, minute: 0}).toDate(),
-      end: moment().add(2, 'days').set({hour: 13, minute: 0}).toDate(),
-      type: 'exam',
-      location: 'Main Hall'
-    },
-    {
-      id: 5,
-      title: 'Tech Symposium 2026',
-      start: moment().add(4, 'days').set({hour: 9, minute: 0}).toDate(),
-      end: moment().add(5, 'days').set({hour: 17, minute: 0}).toDate(),
-      type: 'event',
-      location: 'Auditorium'
-    }
-  ];
+  const [events, setEvents] = useState([]);
 
+  React.useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        const [eventsRes, assignmentsRes] = await Promise.all([
+          api.get('/events'),
+          api.get('/assignments')
+        ]);
+        
+        const formattedEvents = (eventsRes.data.data || eventsRes.data || []).map(e => ({
+          ...e,
+          id: e._id,
+          title: e.title,
+          start: new Date(e.date || e.startDate),
+          end: new Date(e.endDate || e.date),
+          type: e.type || 'event',
+          location: e.location || ''
+        }));
+        
+        const formattedAssignments = (assignmentsRes.data.data || assignmentsRes.data || []).map(a => ({
+          ...a,
+          id: a._id,
+          title: a.title,
+          start: new Date(a.dueDate),
+          end: new Date(a.dueDate),
+          type: 'assignment',
+          course: a.course?.name || ''
+        }));
+        
+        setEvents([...formattedEvents, ...formattedAssignments]);
+      } catch (error) {
+        console.error('Error fetching calendar data', error);
+      }
+    };
+    fetchCalendarData();
+  }, []);
   const eventStyleGetter = (event) => {
     let style = {
       borderRadius: '8px',
@@ -179,3 +171,4 @@ export default function Calendar() {
     </div>
   );
 }
+
