@@ -31,7 +31,7 @@ export default function Events() {
           date: new Date(e.date || e.createdAt).toLocaleDateString(),
           time: new Date(e.date || e.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
           registered: e.registeredUsers?.length || 0,
-          capacity: e.maxAttendees || 0,
+          maxCapacity: e.maxAttendees || 0,
           isRegistered: e.registeredUsers?.includes('current-user-id') // We'll just leave it if it works
         })));
       } catch (err) {
@@ -246,5 +246,6 @@ export default function Events() {
     </div>
   );
 }
+
 
 

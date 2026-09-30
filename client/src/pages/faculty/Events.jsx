@@ -26,15 +26,15 @@ const FacultyEvents = () => {
       const mappedEvents = data.map(e => ({
         id: e._id || e.id,
         title: e.title,
-        date: e.startDate ? new Date(e.startDate).toLocaleDateString() : 'N/A',
-        endDate: e.endDate ? new Date(e.endDate).toLocaleDateString() : 'N/A',
-        time: e.startDate && e.endDate ? `${new Date(e.startDate).toLocaleTimeString()} - ${new Date(e.endDate).toLocaleTimeString()}` : 'N/A',
-        location: e.location || 'Campus',
-        category: e.category || 'Event',
-        maxAttendees: e.capacity || 100,
-        registered: e.attendees ? e.attendees.length : 0,
+                  date: e.date ? new Date(e.date).toLocaleDateString() : 'N/A',
+          endDate: e.endDate ? new Date(e.endDate).toLocaleDateString() : 'N/A',
+          time: e.date && e.endDate ? `${new Date(e.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(e.endDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'N/A',
+          location: e.location || 'Campus',
+          category: e.category || 'Event',
+          maxAttendees: e.maxAttendees || 100,
+          registered: e.registeredUsers ? e.registeredUsers.length : 0,
         status: e.status || 'Upcoming',
-        attendees: e.attendees || []
+        attendees: e.registeredUsers || []
       }));
       setEvents(mappedEvents);
     } catch (error) {
@@ -46,13 +46,13 @@ const FacultyEvents = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const newEvent = {
+        const newEvent = {
       title: formData.get('title'),
       category: formData.get('category'),
       location: formData.get('location'),
-      startDate: formData.get('startDate'),
+      date: formData.get('startDate'),
       endDate: formData.get('endDate'),
-      capacity: parseInt(formData.get('maxAttendees')),
+      maxAttendees: parseInt(formData.get('maxAttendees')),
       description: formData.get('description'),
       imageUrl: formData.get('imageUrl')
     };
@@ -64,7 +64,7 @@ const FacultyEvents = () => {
       fetchEvents();
     } catch (error) {
       console.error(error);
-      toast.error('Failed to create event');
+      toast.error(error.response?.data?.message || 'Failed to create event');
     }
   };
 
@@ -184,11 +184,12 @@ const FacultyEvents = () => {
             
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Category</label>
-              <select name="category" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                <option value="Workshop">Workshop</option>
-                <option value="Lecture">Guest Lecture</option>
-                <option value="Seminar">Seminar</option>
-                <option value="Other">Other</option>
+                            <select name="category" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="academic">Academic</option>
+                <option value="cultural">Cultural</option>
+                <option value="sports">Sports</option>
+                <option value="workshop">Workshop</option>
+                <option value="seminar">Seminar</option>
               </select>
             </div>
 
@@ -269,5 +270,9 @@ const FacultyEvents = () => {
 };
 
 export default FacultyEvents;
+
+
+
+
 
 
