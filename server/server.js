@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -29,7 +29,7 @@ const app = express();
 app.use(express.json());
 
 // Enable CORS
-app.use(cors());
+app.use(cors({ origin: ['https://smart-campus-hub-delta.vercel.app', 'http://localhost:5173'], credentials: true }));
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {
@@ -68,3 +68,4 @@ process.on('unhandledRejection', (err, promise) => {
   // Close server & exit process
   server.close(() => process.exit(1));
 });
+
