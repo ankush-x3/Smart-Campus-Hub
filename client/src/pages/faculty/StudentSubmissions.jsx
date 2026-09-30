@@ -33,7 +33,7 @@ const StudentSubmissions = () => {
                  assignmentId: assign._id || assign.id,
                  student: s.student?.name || 'Student',
                  assignment: assign.title,
-                 course: assign.course?.code || assign.course || 'Course',
+                 course: assign.course?.title || assign.course?.code || (typeof assign.course === 'string' ? assign.course : 'Course'),
                  submittedAt: s.submittedAt ? new Date(s.submittedAt).toLocaleString() : 'N/A',
                  status: s.grade != null ? 'graded' : 'pending',
                  grade: s.grade,
@@ -252,5 +252,7 @@ const StudentSubmissions = () => {
 };
 
 export default StudentSubmissions;
+
+
 
 

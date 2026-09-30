@@ -13,8 +13,7 @@ const FacultyNotices = () => {
   const [editingNotice, setEditingNotice] = useState(null);
   const [notices, setNotices] = useState([]);
 
-  React.useEffect(() => {
-    const fetchNotices = async () => {
+  const fetchNotices = async () => {
       try {
         const res = await api.get('/announcements');
                 setNotices((res.data.data || res.data).map(n => ({
@@ -28,6 +27,8 @@ const FacultyNotices = () => {
         console.error('Failed to fetch notices:', error);
       }
     };
+
+  React.useEffect(() => {
     fetchNotices();
   }, []);
 
@@ -41,7 +42,7 @@ const FacultyNotices = () => {
     const formData = new FormData(e.target);
     const noticeData = {
       title: formData.get('title'),
-      category: formData.get('category'),
+      category: formData.get('category').toLowerCase(),
       content: formData.get('content'),
       isPinned: formData.get('isPinned') === 'on'
     };
@@ -50,17 +51,17 @@ const FacultyNotices = () => {
       if (editingNotice) {
         const res = await api.put(`/announcements/${editingNotice.id}`, noticeData);
         const updatedNotice = res.data;
-        setNotices(notices.map(n => n.id === editingNotice.id ? { ...updatedNotice, id: updatedNotice._id || updatedNotice.id } : n));
+        fetchNotices();
         toast.success('Notice updated successfully!');
       } else {
         const res = await api.post('/announcements', noticeData);
         const newNotice = res.data;
-        setNotices([...notices, { ...newNotice, id: newNotice._id || newNotice.id }]);
+        fetchNotices();
         toast.success('Notice posted successfully!');
       }
       setIsModalOpen(false);
     } catch (error) {
-      toast.error('Failed to save notice');
+      toast.error(error.response?.data?.message || 'Failed to save notice');
     }
   };
 
@@ -262,5 +263,10 @@ const FacultyNotices = () => {
 };
 
 export default FacultyNotices;
+
+
+
+
+
 
 

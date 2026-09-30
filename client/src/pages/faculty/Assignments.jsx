@@ -16,6 +16,9 @@ const FacultyAssignments = () => {
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   
   const [assignments, setAssignments] = useState([]);
+    const [courses, setCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [coursesError, setCoursesError] = useState('');
   const [submissions, setSubmissions] = useState([
     { id: 1, student: 'John Doe', submittedAt: '2023-11-19 14:30', status: 'submitted', marks: null },
     { id: 2, student: 'Jane Smith', submittedAt: '2023-11-18 09:15', status: 'graded', marks: 95 },
@@ -23,16 +26,32 @@ const FacultyAssignments = () => {
     { id: 4, student: 'Bob Williams', submittedAt: '2023-11-20 23:50', status: 'submitted', marks: null },
   ]);
 
+  const fetchAssignments = async () => {
+    try {
+      const res = await api.get('/assignments');
+      setAssignments((res.data.data || res.data).map(a => ({ ...a, id: a._id || a.id, course: a.course?.title || (typeof a.course === 'string' ? a.course : 'Unknown Course'), faculty: a.faculty?.name || (typeof a.faculty === 'string' ? a.faculty : 'Unknown Faculty') })));
+    } catch (error) {
+      console.error('Failed to fetch assignments:', error);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      setCoursesLoading(true);
+      const res = await api.get('/courses');
+      setCourses(res.data.data || res.data);
+      setCoursesError('');
+    } catch (err) {
+      console.error('Failed to fetch courses:', err);
+      setCoursesError('Failed to load courses');
+    } finally {
+      setCoursesLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchAssignments = async () => {
-      try {
-        const res = await api.get('/assignments');
-        setAssignments((res.data.data || res.data).map(a => ({ ...a, id: a._id || a.id })));
-      } catch (error) {
-        console.error('Failed to fetch assignments:', error);
-      }
-    };
     fetchAssignments();
+    fetchCourses();
   }, []);
 
   const filteredAssignments = assignments.filter(a => activeTab === 'All' ? true : a.status === activeTab);
@@ -53,18 +72,18 @@ const FacultyAssignments = () => {
       dueDate: formData.get('dueDate'),
       description: formData.get('description'),
       attachmentUrl: formData.get('attachmentUrl'),
-      status: 'Active',
+      status: 'active',
       submitted: 0,
       total: 0 // Mock total students
     };
     
     try {
       const res = await api.post('/assignments', data);
-      setAssignments([...assignments, { ...res.data, id: res.data._id || res.data.id }]);
+      fetchAssignments();
       toast.success('Assignment created successfully!');
       setIsCreateModalOpen(false);
     } catch (err) {
-      toast.error('Failed to create assignment');
+      toast.error(err.response?.data?.message || 'Failed to create assignment');
     }
   };
 
@@ -85,8 +104,8 @@ const FacultyAssignments = () => {
   const handleClose = async (id) => {
     try {
       const assignment = assignments.find(a => a.id === id);
-      const res = await api.put(`/assignments/${id}`, { ...assignment, status: 'Closed' });
-      setAssignments(assignments.map(a => a.id === id ? { ...res.data, id: res.data._id || res.data.id } : a));
+      const res = await api.put(`/assignments/${id}`, { ...assignment, status: 'closed' });
+      fetchAssignments();
       toast.success('Assignment closed');
     } catch (err) {
       toast.error('Failed to close assignment');
@@ -163,7 +182,7 @@ const FacultyAssignments = () => {
                 
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
                   <CalendarIcon size={14} />
-                  <span>Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
+                  <span>Due: {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'No due date'}</span>
                 </div>
 
                 <div className="mt-auto space-y-3">
@@ -233,11 +252,19 @@ const FacultyAssignments = () => {
             
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Course</label>
-              <select name="course" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                <option value="">Select Course...</option>
-                <option value="CS101">CS101 - Intro to Programming</option>
-                <option value="CS201">CS201 - Data Structures</option>
-                <option value="CS301">CS301 - Algorithms</option>
+                            <select name="course" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                {coursesLoading ? (
+                  <option value="">Loading courses...</option>
+                ) : coursesError ? (
+                  <option value="">{coursesError}</option>
+                ) : courses.length === 0 ? (
+                  <option value="">No courses available</option>
+                ) : (
+                  <>
+                    <option value="">Select Course...</option>
+                    {courses.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.title} ({c.code})</option>)}
+                  </>
+                )}
               </select>
             </div>
 
@@ -331,4 +358,14 @@ const FacultyAssignments = () => {
 };
 
 export default FacultyAssignments;
+
+
+
+
+
+
+
+
+
+
 
