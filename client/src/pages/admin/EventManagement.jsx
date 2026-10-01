@@ -20,9 +20,15 @@ const EventManagement = () => {
 
   const fetchEvents = async () => {
     try {
-      const res = await api.get('/events', { params: { search, status: status !== 'All' ? status.toLowerCase() : '' } });
-      if (res.data.success) {
-        setEvents(res.data.data);
+      const params = {};
+      if (search) params.search = search;
+      if (status !== 'All') params.status = status.toLowerCase();
+      
+      const res = await api.get('/events', { params });
+      if (res.data && res.data.success) {
+        setEvents(Array.isArray(res.data.data) ? res.data.data : []);
+      } else {
+        setEvents([]);
       }
     } catch (err) {
       toast.error('Failed to load events');
@@ -139,7 +145,7 @@ const EventManagement = () => {
         <div className="overflow-x-auto min-h-[300px]">
           {loading ? (
             <div className="flex justify-center items-center h-48"><LoadingSpinner /></div>
-          ) : events.length === 0 ? (
+          ) : !Array.isArray(events) || events.length === 0 ? (
             <div className="text-center py-12 text-gray-500">No events found.</div>
           ) : (
             <table className="w-full text-left text-sm">
@@ -155,23 +161,23 @@ const EventManagement = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {events.map((event) => (
-                  <tr key={event._id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={event._id || Math.random()} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{event.title}</div>
-                      <div className="text-gray-500 text-xs capitalize">{event.category}</div>
+                      <div className="font-medium text-gray-900">{event.title || 'Untitled'}</div>
+                      <div className="text-gray-500 text-xs capitalize">{event.category || 'Event'}</div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">{event.organizer?.name || 'Admin'}</td>
                     <td className="px-6 py-4 text-gray-600">
-                      <div className="flex items-center gap-1"><Calendar size={14}/> {format(new Date(event.date), 'MMM dd, yyyy')}</div>
+                      <div className="flex items-center gap-1"><Calendar size={14}/> {event.date ? format(new Date(event.date), 'MMM dd, yyyy') : 'TBA'}</div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">
                       <div className="flex items-center gap-1">
-                        <Users size={14}/> {event.registeredUsers?.length || 0}{event.maxAttendees ? `/${event.maxAttendees}` : ''}
+                        <Users size={14}/> {Array.isArray(event.registeredUsers) ? event.registeredUsers.length : 0}{event.maxAttendees ? `/${event.maxAttendees}` : ''}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <Badge className="capitalize" variant={event.status === 'upcoming' ? 'success' : event.status === 'completed' ? 'primary' : 'danger'}>
-                        {event.status}
+                        {event.status || 'unknown'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-right">
