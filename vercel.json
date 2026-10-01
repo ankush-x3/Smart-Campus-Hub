@@ -1,8 +1,8 @@
-{
+﻿{
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://smart-campus-hub-8o36.onrender.com/api/:path*"
+      "source": "/api/(.*)",
+      "destination": "https://smart-campus-hub-8o36.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
