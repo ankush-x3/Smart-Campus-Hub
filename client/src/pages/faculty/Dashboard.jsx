@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, Users, Calendar, CheckSquare, Clock, AlertCircle, 
   ChevronRight, MoreVertical, Plus, FileText, Bell 
@@ -8,8 +8,10 @@ import Badge from '../../components/ui/Badge';
 import EmptyState from '../../components/ui/EmptyState';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import api from '../../utils/api';
+import { useNavigate } from 'react-router-dom';
 
 const FacultyDashboard = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
   const [stats, setStats] = useState([
@@ -101,11 +103,11 @@ const FacultyDashboard = () => {
           <p className="text-gray-500 mt-1">Here's what's happening today.</p>
         </div>
         <div className="flex gap-2">
-          <button className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+          <button onClick={() => navigate('/faculty/notices?action=new')} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium transition-colors">
             <Bell size={18} />
             Post Notice
           </button>
-          <button className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 font-medium transition-colors">
+          <button onClick={() => navigate('/faculty/assignments?action=new')} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 font-medium transition-colors">
             <Plus size={18} />
             Create Assignment
           </button>

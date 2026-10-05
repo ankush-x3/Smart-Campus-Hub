@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { 
   Bell, Plus, Search, Edit2, Trash2, Pin, Eye, Calendar, Tag
 } from 'lucide-react';
@@ -7,11 +7,15 @@ import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const FacultyNotices = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNotice, setEditingNotice] = useState(null);
   const [notices, setNotices] = useState([]);
+  
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const fetchNotices = async () => {
       try {
@@ -30,7 +34,13 @@ const FacultyNotices = () => {
 
   React.useEffect(() => {
     fetchNotices();
-  }, []);
+    
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'new') {
+      setIsModalOpen(true);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const handleOpenModal = (notice = null) => {
     setEditingNotice(notice);

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, Filter, MoreVertical, Edit2, Trash2, 
   Eye, FileText, CheckCircle, XCircle, Clock, Calendar as CalendarIcon
@@ -8,6 +8,7 @@ import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const FacultyAssignments = () => {
   const [activeTab, setActiveTab] = useState('All');
@@ -15,6 +16,9 @@ const FacultyAssignments = () => {
   const [isSubmissionsModalOpen, setIsSubmissionsModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [assignments, setAssignments] = useState([]);
     const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -52,7 +56,13 @@ const FacultyAssignments = () => {
   useEffect(() => {
     fetchAssignments();
     fetchCourses();
-  }, []);
+    
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'new') {
+      setIsCreateModalOpen(true);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const filteredAssignments = assignments.filter(a => activeTab === 'All' ? true : a.status === activeTab);
 
