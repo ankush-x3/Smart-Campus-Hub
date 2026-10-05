@@ -25,7 +25,8 @@ const sendTokenResponse = (user, statusCode, res) => {
 // @access  Public
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, email, password, role, department, year, phone } = req.body;
+    const { name, email, password, department, year, phone } = req.body;
+    const role = 'student';
 
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -113,4 +114,38 @@ router.put('/profile', protect, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+
+// @route   PUT /api/auth/change-password
+// @desc    Change user password
+// @access  Private
+router.put('/change-password', protect, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Please provide current and new password' });
+    }
+    
+    // Get user with password
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    // Check current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Incorrect current password' });
+    }
+    
+    // Set new password (pre-save hook will hash it)
+    user.password = newPassword;
+    await user.save();
+    
+    res.status(200).json({ success: true, message: 'Password changed successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
+

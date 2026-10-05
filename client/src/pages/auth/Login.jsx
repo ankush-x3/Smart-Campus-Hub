@@ -212,7 +212,10 @@ const Login = () => {
           {/* ── Demo accounts quick-fill ── */}
           <div className="mt-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 text-center">
-              🔐 Demo Accounts — Click to Auto-Fill
+              🔐 Demo Accounts — For UI demonstration only
+            </p>
+            <p className="text-xs text-rose-500 text-center mb-3 font-semibold">
+              Login disabled — These credentials cannot be used to sign in.
             </p>
             <div className="space-y-2">
               {DEMO_ACCOUNTS.map((a) => (
@@ -233,9 +236,6 @@ const Login = () => {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-slate-400 text-center mt-3">
-              📧 Student: any email &nbsp;|&nbsp; Faculty/Admin: institutional email
-            </p>
           </div>
 
         </div>

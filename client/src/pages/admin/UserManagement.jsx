@@ -92,7 +92,7 @@ const UserManagement = () => {
     data.role = data.role.toLowerCase();
 
     try {
-      const res = await api.post('/admin/users', data);
+      const res = await api.post('/users', data);
       if (res.data.success) {
         toast.success('User created successfully');
         setIsAddUserModalOpen(false);
@@ -319,3 +319,4 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
+

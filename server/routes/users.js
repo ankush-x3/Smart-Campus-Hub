@@ -37,17 +37,32 @@ router.put('/:id/role', protect, authorize('admin'), async (req, res) => {
     if (!['student','faculty','admin'].includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role' });
     }
-    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select('-password');
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    const userToUpdate = await User.findById(req.params.id);
+    if (!userToUpdate) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (userToUpdate.role === 'admin' && role !== 'admin') {
+      const adminCount = await User.countDocuments({ role: 'admin' });
+      if (adminCount <= 1) {
+        return res.status(400).json({ success: false, message: 'Cannot demote the last admin account.' });
+      }
+    }
+
+    userToUpdate.role = role;
+    await userToUpdate.save(); // Avoid bypassing hooks
     
     await AuditLog.create({
       action: 'User Role Changed',
-      details: `Changed role of ${user.email} to ${role}`,
+      details: `Changed role of ${userToUpdate.email} to ${role}`,
       user: req.user.id,
       type: 'user'
     });
     
-    res.json({ success: true, data: user });
+    // Omit password from response
+    const returnUser = userToUpdate.toObject();
+    delete returnUser.password;
+
+    res.json({ success: true, data: returnUser });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
@@ -57,18 +72,57 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
     if (req.params.id === req.user._id.toString() || req.params.id === req.user.id) {
       return res.status(400).json({ success: false, message: 'Cannot delete your own account' });
     }
-    const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    const userToDelete = await User.findById(req.params.id);
+    if (!userToDelete) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (userToDelete.role === 'admin') {
+      const adminCount = await User.countDocuments({ role: 'admin' });
+      if (adminCount <= 1) {
+        return res.status(400).json({ success: false, message: 'Cannot delete the last admin account.' });
+      }
+    }
+    
+    await userToDelete.deleteOne(); // updated from findByIdAndDelete
     
     await AuditLog.create({
       action: 'User Deleted',
-      details: `Deleted user ${user.email}`,
+      details: `Deleted user ${userToDelete.email}`,
       user: req.user.id,
       type: 'user'
     });
     
     res.json({ success: true, message: 'User deleted successfully' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+
+// POST /api/users - Admin: create user
+router.post('/', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { name, email, password, role, department, year, phone } = req.body;
+    if (!['student','faculty','admin'].includes(role)) {
+      return res.status(400).json({ success: false, message: 'Invalid role' });
+    }
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ success: false, message: 'User with this email already exists.' });
+    }
+    const user = await User.create({
+      name, email, password, role, department, year, phone
+    });
+    await AuditLog.create({
+      action: 'User Created',
+      details: 'Admin created ' + user.role + ' account for ' + user.email,
+      user: req.user.id,
+      type: 'user'
+    });
+    const returnUser = user.toObject();
+    delete returnUser.password;
+    res.status(201).json({ success: true, data: returnUser });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 module.exports = router;

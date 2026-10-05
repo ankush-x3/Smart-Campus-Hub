@@ -17,6 +17,29 @@ const AdminProfile = () => {
   const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [saving, setSaving] = useState(false);
 
+    const handlePasswordChange = async () => {
+    if (!pwdForm.currentPassword || !pwdForm.newPassword) {
+      toast.error('Please fill current and new password');
+      return;
+    }
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    try {
+      const res = await api.put('/auth/change-password', {
+        currentPassword: pwdForm.currentPassword,
+        newPassword: pwdForm.newPassword
+      });
+      if (res.data.success) {
+        toast.success('Password changed successfully');
+        setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to change password');
+    }
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error('Name cannot be empty'); return; }
     setSaving(true);
@@ -169,7 +192,7 @@ const AdminProfile = () => {
               </div>
             ))}
             <button
-              onClick={() => toast.success('Password change feature coming soon!')}
+              onClick={handlePasswordChange}
               className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold transition-colors"
             >
               <Lock className="w-4 h-4" /> Update Password
@@ -182,3 +205,4 @@ const AdminProfile = () => {
 };
 
 export default AdminProfile;
+
