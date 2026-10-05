@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
 const AdminProfile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, setUser } = useAuth();
   const [activeTab, setActiveTab]     = useState('overview');
   const [editing, setEditing]         = useState(false);
   const [showPwd, setShowPwd]         = useState(false);
@@ -15,6 +15,26 @@ const AdminProfile = () => {
     phone:      user?.phone || '',
   });
   const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const [emailForm, setEmailForm] = useState({ currentPassword: '', newEmail: '' });
+    const handleEmailChange = async () => {
+      if (!emailForm.currentPassword || !emailForm.newEmail) {
+        toast.error('Please fill current password and new email');
+        return;
+      }
+      try {
+        const res = await api.put('/auth/change-email', {
+          currentPassword: emailForm.currentPassword,
+          newEmail: emailForm.newEmail
+        });
+        if (res.data.success) {
+          setUser && setUser(res.data.data);
+          toast.success('Email changed successfully');
+          setEmailForm({ currentPassword: '', newEmail: '' });
+        }
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to change email');
+      }
+    };
   const [saving, setSaving] = useState(false);
 
     const handlePasswordChange = async () => {
@@ -46,7 +66,7 @@ const AdminProfile = () => {
     try {
       const res = await api.put('/auth/profile', form);
       if (res.data.success) {
-        updateProfile && updateProfile(res.data.data);
+        setUser && setUser(res.data.data);
         toast.success('Profile updated successfully!');
         setEditing(false);
       }
@@ -164,6 +184,40 @@ const AdminProfile = () => {
       )}
 
       {/* Security */}
+        {activeTab === 'security' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-w-lg mb-6">
+            <h3 className="font-semibold text-slate-800 mb-5 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-rose-600" /> Change Email
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Current Password</label>
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={emailForm.currentPassword}
+                  onChange={e => setEmailForm(p => ({ ...p, currentPassword: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">New Email</label>
+                <input
+                  type="email"
+                  value={emailForm.newEmail}
+                  onChange={e => setEmailForm(p => ({ ...p, newEmail: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+              <button
+                onClick={handleEmailChange}
+                className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold transition-colors"
+              >
+                <Mail className="w-4 h-4" /> Update Email
+              </button>
+            </div>
+          </div>
+        )}
+
       {activeTab === 'security' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-w-lg">
           <h3 className="font-semibold text-slate-800 mb-5 flex items-center gap-2">
@@ -205,4 +259,6 @@ const AdminProfile = () => {
 };
 
 export default AdminProfile;
+
+
 

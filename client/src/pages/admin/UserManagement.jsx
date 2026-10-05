@@ -63,23 +63,35 @@ const UserManagement = () => {
     }
   };
 
+  const [newEmail, setNewEmail] = useState('');
   const openEditRole = (user) => {
+    setNewEmail(user.email);
     setSelectedUser(user);
     setNewRole(user.role);
     setIsEditRoleModalOpen(true);
   };
 
-  const handleUpdateRole = async () => {
+    const handleEditUser = async () => {
+    let updated = false;
     try {
-      const res = await api.put(`/users/${selectedUser._id}/role`, { role: newRole });
-      if (res.data.success) {
-        toast.success('Role updated successfully');
+      if (newRole !== selectedUser.role) {
+        await api.put(`/users/${selectedUser._id}/role`, { role: newRole });
+        updated = true;
+      }
+      if (newEmail !== selectedUser.email) {
+        await api.put(`/users/${selectedUser._id}/email`, { email: newEmail });
+        updated = true;
+      }
+      if (updated) {
+        toast.success('User updated successfully');
         setIsEditRoleModalOpen(false);
         fetchUsers();
         fetchStats();
+      } else {
+        setIsEditRoleModalOpen(false);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update role');
+      toast.error(err.response?.data?.message || 'Failed to update user');
     }
   };
 
@@ -296,21 +308,33 @@ const UserManagement = () => {
         </form>
       </Modal>
 
-      <Modal isOpen={isEditRoleModalOpen} onClose={() => setIsEditRoleModalOpen(false)} title="Edit User Role">
+            <Modal isOpen={isEditRoleModalOpen} onClose={() => setIsEditRoleModalOpen(false)} title="Edit User">
         <div className="space-y-4">
-          <p className="text-sm text-gray-500">Change role for <strong>{selectedUser?.name}</strong></p>
-          <select 
-            value={newRole}
-            onChange={(e) => setNewRole(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:ring-rose-500 focus:border-rose-500"
-          >
-            <option value="student">Student</option>
-            <option value="faculty">Faculty</option>
-            <option value="admin">Admin</option>
-          </select>
+          <p className="text-sm text-gray-500">Edit details for <strong>{selectedUser?.name}</strong></p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input 
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <select 
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value)}
+              className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="student">Student</option>
+              <option value="faculty">Faculty</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
           <div className="pt-4 flex justify-end gap-3">
             <button onClick={() => setIsEditRoleModalOpen(false)} className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-            <button onClick={handleUpdateRole} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Update Role</button>
+            <button onClick={handleEditUser} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Changes</button>
           </div>
         </div>
       </Modal>
@@ -319,4 +343,7 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
+
+
+
 

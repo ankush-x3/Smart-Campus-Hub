@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { User, Mail, Phone, BookOpen, Shield, Download, Camera, QrCode } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import clsx from 'clsx';
@@ -9,6 +10,7 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('Overview');
   const tabs = ['Overview', 'Edit Profile', 'Security', 'QR Card'];
 
+  const { setUser } = useAuth();
   const [student, setStudent] = useState({ stats: {} });
 
   React.useEffect(() => {
@@ -144,7 +146,29 @@ export default function Profile() {
       )}
 
       {activeTab === 'Security' && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-2xl mx-auto">
+<>
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-2xl mx-auto mb-6">
+            <div className="flex items-center mb-6 text-slate-800">
+              <Mail className="w-6 h-6 mr-2 text-indigo-600" />
+              <h3 className="font-bold text-lg">Change Email</h3>
+            </div>
+            <form onSubmit={handleEmailChange} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Current Password</label>
+                <input type="password" name="currentPassword" required className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">New Email</label>
+                <input type="email" name="newEmail" required className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div className="pt-4 text-right">
+                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors shadow-sm">
+                  Update Email
+                </button>
+              </div>
+            </form>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-2xl mx-auto">
           <div className="flex items-center mb-6 text-slate-800">
             <Shield className="w-6 h-6 mr-2 text-indigo-600" />
             <h3 className="font-bold text-lg">Change Password</h3>
@@ -161,10 +185,11 @@ export default function Profile() {
             </div>
             <div className="pt-4 text-right">
               <button type="submit" className="px-6 py-2.5 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-900">Update Password</button>
-            </div>
-          </form>
-        </div>
-      )}
+              </div>
+            </form>
+          </div>
+</>
+        )}
 
       {activeTab === 'QR Card' && (
         <div className="flex flex-col items-center">
@@ -208,6 +233,11 @@ export default function Profile() {
     </div>
   );
 }
+
+
+
+
+
 
 
 

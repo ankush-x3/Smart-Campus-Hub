@@ -54,7 +54,8 @@ router.post('/register', async (req, res, next) => {
 // @access  Public
 router.post('/login', async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    if (email) email = email.trim().toLowerCase();
 
     // Validate email and password
     if (!email || !password) {
@@ -147,5 +148,69 @@ router.put('/change-password', protect, async (req, res, next) => {
   }
 });
 
-module.exports = router;
 
+
+
+// @route   PUT /api/auth/change-email
+// @desc    Change user email
+// @access  Private
+router.put('/change-email', protect, async (req, res, next) => {
+  try {
+    const { currentPassword, newEmail } = req.body;
+    
+    if (!currentPassword || !newEmail) {
+      return res.status(400).json({ success: false, message: 'Please provide current password and new email' });
+    }
+    
+    // Normalize new email
+    const normalizedEmail = newEmail.trim().toLowerCase();
+    
+    // Simple regex check
+    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email format' });
+    }
+
+    // Get user with password
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    // Check current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Incorrect current password' });
+    }
+    
+    // Check if new email is already taken by ANOTHER user
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+      return res.status(409).json({ success: false, message: 'Email is already in use' });
+    }
+    
+    // Update email
+    const oldEmail = user.email;
+    user.email = normalizedEmail;
+    await user.save();
+    
+    // Audit Log
+    const AuditLog = require('../models/AuditLog');
+    await AuditLog.create({
+      action: 'EMAIL_CHANGED',
+      details: 'User changed their account email from ' + oldEmail + ' to ' + normalizedEmail,
+      user: req.user.id,
+      type: 'user'
+    });
+    
+    // Return safe user object
+    const returnUser = user.toObject();
+    delete returnUser.password;
+
+    res.status(200).json({ success: true, message: 'Email changed successfully', data: returnUser });
+  } catch (err) {
+    next(err);
+  }
+});
+
+module.exports = router;

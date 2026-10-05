@@ -125,4 +125,49 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
   }
 });
 
+
+// PUT /api/users/:id/email - Admin: change user email
+router.put('/:id/email', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Please provide a new email' });
+    }
+    
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email format' });
+    }
+    
+    const userToUpdate = await User.findById(req.params.id);
+    if (!userToUpdate) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    // Check if new email is already taken by ANOTHER user
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser && existingUser._id.toString() !== userToUpdate._id.toString()) {
+      return res.status(409).json({ success: false, message: 'Email is already in use' });
+    }
+    
+    const oldEmail = userToUpdate.email;
+    userToUpdate.email = normalizedEmail;
+    await userToUpdate.save(); // Avoid bypassing hooks
+    
+    await AuditLog.create({
+      action: 'USER_EMAIL_CHANGED',
+      details: 'Admin changed email for ' + userToUpdate.name + ' from ' + oldEmail + ' to ' + normalizedEmail,
+      user: req.user.id,
+      type: 'user'
+    });
+    
+    // Omit password from response
+    const returnUser = userToUpdate.toObject();
+    delete returnUser.password;
+
+    res.json({ success: true, data: returnUser });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
 module.exports = router;
