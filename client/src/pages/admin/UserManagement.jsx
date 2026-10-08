@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Search, Filter, Plus, Edit2, Trash2, 
-  Shield, User, GraduationCap, Download
+  Shield, User, GraduationCap, Download, Eye, EyeOff
 } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
@@ -13,6 +13,7 @@ const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isEditRoleModalOpen, setIsEditRoleModalOpen] = useState(false);
   
   const [users, setUsers] = useState([]);
@@ -274,7 +275,23 @@ const UserManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input type="password" name="password" minLength="6" required className="w-full px-3 py-2 border rounded-lg focus:ring-rose-500 focus:border-rose-500" />
+              <div className="relative">
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  name="password" 
+                  minLength="6" 
+                  required 
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-rose-500 focus:border-rose-500 pr-10" 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
