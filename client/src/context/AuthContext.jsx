@@ -1,18 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
-
-// Axios instance pointing at the backend
-const api = axios.create({ baseURL: '/api' });
-
-// Attach token to every request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser]       = useState(null);
@@ -20,13 +10,13 @@ export const AuthProvider = ({ children }) => {
 
   // Re-hydrate session on page refresh
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (!token) { setLoading(false); return; }
 
     api.get('/auth/me')
       .then(res => setUser(res.data.data))
       .catch(() => {
-        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         setUser(null);
       })
       .finally(() => setLoading(false));
@@ -37,7 +27,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post('/auth/login', { email, password });
       const { token, data: userData } = res.data;
-      localStorage.setItem('token', token);
+      sessionStorage.setItem('token', token);
       setUser(userData);
       toast.success(`Welcome back, ${userData.name}! 👋`);
       return true;           // success signal for Login.jsx
@@ -53,7 +43,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post('/auth/register', formData);
       const { token, data: userData } = res.data;
-      localStorage.setItem('token', token);
+      sessionStorage.setItem('token', token);
       setUser(userData);
       toast.success(`Account created! Welcome, ${userData.name}! 🎉`);
       return true;
@@ -66,7 +56,7 @@ export const AuthProvider = ({ children }) => {
 
   // ── logout ─────────────────────────────────────────────────────────────
   const logout = () => {
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     setUser(null);
     toast.success('Logged out successfully.');
   };
