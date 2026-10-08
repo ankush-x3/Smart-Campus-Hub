@@ -156,7 +156,7 @@ const Register = () => {
                   value={formData.name}
                   onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                  placeholder="Ankush Singh"
+                  placeholder="Enter your name"
                   autoComplete="name"
                 />
               </div>
