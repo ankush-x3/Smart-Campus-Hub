@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, MapPin, Clock, Users, Plus, Edit2, Trash2, Search, Filter 
 } from 'lucide-react';
@@ -30,10 +30,10 @@ const FacultyEvents = () => {
           endDate: e.endDate ? new Date(e.endDate).toLocaleDateString() : 'N/A',
           time: e.date && e.endDate ? `${new Date(e.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(e.endDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'N/A',
           location: e.location || 'Campus',
-          category: e.category || 'Event',
+          category: e.category ? e.category.charAt(0).toUpperCase() + e.category.slice(1) : 'Event',
           maxAttendees: e.maxAttendees || 100,
           registered: e.registeredUsers ? e.registeredUsers.length : 0,
-        status: e.status || 'Upcoming',
+          status: e.status ? e.status.charAt(0).toUpperCase() + e.status.slice(1) : 'Upcoming',
         attendees: e.registeredUsers || []
       }));
       setEvents(mappedEvents);

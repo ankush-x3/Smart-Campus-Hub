@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Users, CheckCircle, Clock } from 'lucide-react';
 import api from '../../utils/api';
 import Badge from '../../components/ui/Badge';
@@ -28,6 +28,7 @@ export default function Events() {
           id: e._id || e.id,
           organizer: e.organizer?.name || 'Unknown Organizer',
           category: e.category ? e.category.charAt(0).toUpperCase() + e.category.slice(1) : 'General',
+          status: e.status ? e.status.charAt(0).toUpperCase() + e.status.slice(1) : 'Upcoming',
           date: new Date(e.date || e.createdAt).toLocaleDateString(),
           time: new Date(e.date || e.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
           registered: e.registeredUsers?.length || 0,
