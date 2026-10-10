@@ -9,9 +9,11 @@ import EmptyState from '../../components/ui/EmptyState';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import api from '../../utils/api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const FacultyDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
 
   const [stats, setStats] = useState([
@@ -97,7 +99,7 @@ const FacultyDashboard = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            Welcome back, Prof. Smith! 
+            Welcome back, {user?.name || 'Faculty'}! 
             <Badge variant="success">Faculty Dashboard</Badge>
           </h1>
           <p className="text-gray-500 mt-1">Here's what's happening today.</p>
