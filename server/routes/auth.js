@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const { sendEmail, isEmailConfigured } = require('../utils/sendEmail');
 
 // Get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
@@ -212,5 +214,150 @@ router.put('/change-email', protect, async (req, res, next) => {
     next(err);
   }
 });
+
+// @route   POST /api/auth/forgotpassword
+// @desc    Forgot password - generate reset token & email link
+// @access  Public
+const forgotPasswordHandler = async (req, res, next) => {
+  try {
+    let { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Please provide an email address' });
+    }
+    email = email.trim().toLowerCase();
+
+    // Validate email format
+    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email address' });
+    }
+
+    // Check if email service is configured
+    if (!isEmailConfigured()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Password reset via email is currently unavailable because SMTP email service is not configured on this server. Please contact your campus administrator or configure SMTP credentials.'
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    // OWASP Best Practice: Return generic message if user not found to prevent account enumeration
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with that email, a password reset link has been sent.'
+      });
+    }
+
+    // Generate token and save hashed token to user model
+    const resetToken = user.getResetPasswordToken();
+    await user.save({ validateBeforeSave: false });
+
+    // Construct reset URL
+    const clientUrl = process.env.CLIENT_URL || 'https://smart-campus-hub-delta.vercel.app';
+    const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
+
+    const message = `Hello ${user.name},\n\nYou requested a password reset for your Smart Campus Hub account.\nClick the link below or copy and paste it into your browser to reset your password:\n\n${resetUrl}\n\nThis link will expire in 15 minutes.\nIf you did not request this, please ignore this email and your password will remain unchanged.`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #4f46e5; margin-top: 0;">Smart Campus Hub</h2>
+        <p>Hello <strong>${user.name}</strong>,</p>
+        <p>You requested a password reset for your Smart Campus Hub account.</p>
+        <p style="margin: 24px 0;">
+          <a href="${resetUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+        </p>
+        <p style="color: #64748b; font-size: 14px;">This link will expire in 15 minutes.</p>
+        <p style="color: #64748b; font-size: 14px;">If you did not request this reset, you can safely ignore this email and your password will remain unchanged.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        <p style="color: #94a3b8; font-size: 12px;">Direct Link: <a href="${resetUrl}" style="color: #4f46e5;">${resetUrl}</a></p>
+      </div>
+    `;
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Password Reset Request — Smart Campus Hub',
+        message,
+        html
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with that email, a password reset link has been sent.'
+      });
+    } catch (err) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+
+      return res.status(500).json({
+        success: false,
+        message: 'Email could not be sent. Please contact administrator or try again later.'
+      });
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route   PUT /api/auth/resetpassword/:resettoken
+// @desc    Reset password using token
+// @access  Public
+const resetPasswordHandler = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+    const token = req.params.resettoken || req.params.token;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Reset token is required' });
+    }
+
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Please provide a new password' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+    }
+
+    // Hash token to compare with database hash
+    const resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired password reset link'
+      });
+    }
+
+    // Set new password (pre-save hook hashes with bcryptjs)
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successful. You can now log in with your new password.'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+router.post('/forgotpassword', forgotPasswordHandler);
+router.post('/forgot-password', forgotPasswordHandler);
+router.put('/resetpassword/:resettoken', resetPasswordHandler);
+router.put('/reset-password/:token', resetPasswordHandler);
 
 module.exports = router;

@@ -170,4 +170,32 @@ router.put('/:id/email', protect, authorize('admin'), async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
+// PUT /api/users/:id/reset-password - Admin: manually reset user's password
+router.put('/:id/reset-password', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+    }
+    const userToUpdate = await User.findById(req.params.id);
+    if (!userToUpdate) return res.status(404).json({ success: false, message: 'User not found' });
+
+    userToUpdate.password = newPassword;
+    userToUpdate.resetPasswordToken = undefined;
+    userToUpdate.resetPasswordExpire = undefined;
+    await userToUpdate.save();
+
+    await AuditLog.create({
+      action: 'ADMIN_PASSWORD_RESET',
+      details: `Admin reset password for user ${userToUpdate.email}`,
+      user: req.user.id,
+      type: 'user'
+    });
+
+    res.json({ success: true, message: `Password reset successfully for ${userToUpdate.name}` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

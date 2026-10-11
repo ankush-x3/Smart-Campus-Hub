@@ -20,8 +20,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       sessionStorage.removeItem('token');
-      // Only redirect if we are not already on login/register pages
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      // Only redirect if we are not already on public auth pages
+      const publicPaths = ['/login', '/register', '/forgot-password'];
+      const isPublicAuthPage = publicPaths.includes(window.location.pathname) || window.location.pathname.startsWith('/reset-password');
+      if (!isPublicAuthPage) {
         window.location.href = '/login';
       }
     }
