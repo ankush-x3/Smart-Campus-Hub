@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -25,8 +25,9 @@ connectDB();
 
 const app = express();
 
-// Body parser
-app.use(express.json());
+// Body parser (allow up to 10mb for image uploads)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Enable CORS
 app.use(cors({ origin: ['https://smart-campus-hub-delta.vercel.app', 'http://localhost:5173'], credentials: true }));

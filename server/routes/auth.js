@@ -2,9 +2,25 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const multer = require('multer');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { sendEmail, isEmailConfigured } = require('../utils/sendEmail');
+const { uploadImageBuffer } = require('../utils/cloudinary');
+
+// Configure multer memory storage for secure in-memory buffer handling
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, and WebP image formats are supported'));
+    }
+  }
+});
 
 // Get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
@@ -85,14 +101,44 @@ router.post('/login', async (req, res, next) => {
 });
 
 // @route   GET /api/auth/me
-// @desc    Get current logged in user
+// @desc    Get current logged in user with real activity stats
 // @access  Private
 router.get('/me', protect, async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const userData = user.toObject();
+
+    // Attach student activity stats safely
+    try {
+      const Event = require('../models/Event');
+      const Complaint = require('../models/Complaint');
+      const CommunityPost = require('../models/CommunityPost');
+      const Course = require('../models/Course');
+
+      const [eventsCount, complaintsCount, postsCount, coursesCount] = await Promise.all([
+        Event.countDocuments({ registeredUsers: user._id }),
+        Complaint.countDocuments({ submittedBy: user._id }),
+        CommunityPost.countDocuments({ author: user._id }),
+        Course.countDocuments(user.department ? { department: new RegExp(`^${user.department}$`, 'i') } : {})
+      ]);
+
+      userData.stats = {
+        courses: coursesCount,
+        events: eventsCount,
+        complaints: complaintsCount,
+        posts: postsCount
+      };
+    } catch (statErr) {
+      userData.stats = { courses: 0, events: 0, complaints: 0, posts: 0 };
+    }
+
     res.status(200).json({
       success: true,
-      data: user
+      data: userData
     });
   } catch (err) {
     next(err);
@@ -104,7 +150,7 @@ router.get('/me', protect, async (req, res, next) => {
 // @access  Private
 router.put('/profile', protect, async (req, res, next) => {
   try {
-    const allowedFields = ['name', 'department', 'year', 'phone', 'profileImage'];
+    const allowedFields = ['name', 'department', 'year', 'phone', 'profileImage', 'coverImage', 'bio', 'avatar'];
     const updates = {};
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
@@ -115,6 +161,146 @@ router.put('/profile', protect, async (req, res, next) => {
     const user = await User.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true });
     res.json({ success: true, data: user });
   } catch (err) { next(err); }
+});
+
+// @route   POST /api/auth/profile/photo
+// @desc    Upload profile avatar (supports multipart file or base64 data URI)
+// @access  Private
+router.post('/profile/photo', protect, (req, res, next) => {
+  upload.single('photo')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message || 'File upload error' });
+    }
+    try {
+      let buffer = null;
+      let mimetype = 'image/jpeg';
+
+      if (req.file) {
+        buffer = req.file.buffer;
+        mimetype = req.file.mimetype;
+      } else if (req.body && req.body.image) {
+        const matches = req.body.image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (!matches || matches.length !== 3) {
+          return res.status(400).json({ success: false, message: 'Invalid image format. Expected base64 data URI.' });
+        }
+        mimetype = matches[1];
+        buffer = Buffer.from(matches[2], 'base64');
+      } else {
+        return res.status(400).json({ success: false, message: 'Please provide an image file or data URI' });
+      }
+
+      if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ success: false, message: 'Image size cannot exceed 5MB' });
+      }
+
+      const { url } = await uploadImageBuffer(buffer, mimetype, 'smart-campus-hub/avatars');
+
+      const user = await User.findByIdAndUpdate(
+        req.user.id,
+        { profileImage: url, avatar: url },
+        { new: true, runValidators: true }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile picture updated successfully',
+        data: user,
+        url
+      });
+    } catch (uploadErr) {
+      next(uploadErr);
+    }
+  });
+});
+
+// @route   DELETE /api/auth/profile/photo
+// @desc    Remove profile picture
+// @access  Private
+router.delete('/profile/photo', protect, async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { profileImage: '', avatar: 'default.jpg' },
+      { new: true, runValidators: true }
+    );
+    res.status(200).json({
+      success: true,
+      message: 'Profile picture removed successfully',
+      data: user
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// @route   POST /api/auth/profile/cover
+// @desc    Upload profile cover image (supports multipart file or base64 data URI)
+// @access  Private
+router.post('/profile/cover', protect, (req, res, next) => {
+  upload.single('cover')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message || 'File upload error' });
+    }
+    try {
+      let buffer = null;
+      let mimetype = 'image/jpeg';
+
+      if (req.file) {
+        buffer = req.file.buffer;
+        mimetype = req.file.mimetype;
+      } else if (req.body && req.body.image) {
+        const matches = req.body.image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (!matches || matches.length !== 3) {
+          return res.status(400).json({ success: false, message: 'Invalid cover image format' });
+        }
+        mimetype = matches[1];
+        buffer = Buffer.from(matches[2], 'base64');
+      } else {
+        return res.status(400).json({ success: false, message: 'Please provide a cover image file or data URI' });
+      }
+
+      if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ success: false, message: 'Cover image size cannot exceed 5MB' });
+      }
+
+      const { url } = await uploadImageBuffer(buffer, mimetype, 'smart-campus-hub/covers');
+
+      const user = await User.findByIdAndUpdate(
+        req.user.id,
+        { coverImage: url },
+        { new: true, runValidators: true }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Cover image updated successfully',
+        data: user,
+        url
+      });
+    } catch (uploadErr) {
+      next(uploadErr);
+    }
+  });
+});
+
+// @route   DELETE /api/auth/profile/cover
+// @desc    Remove profile cover image
+// @access  Private
+router.delete('/profile/cover', protect, async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { coverImage: '' },
+      { new: true, runValidators: true }
+    );
+    res.status(200).json({
+      success: true,
+      message: 'Cover image removed successfully',
+      data: user
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 

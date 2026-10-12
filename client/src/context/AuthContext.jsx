@@ -66,11 +66,12 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.put('/auth/profile', data);
       setUser(res.data.data);
-      toast.success('Profile updated!');
-      return true;
+      toast.success('Profile updated successfully!');
+      return { success: true, data: res.data.data };
     } catch (err) {
-      toast.error('Failed to update profile.');
-      return false;
+      const msg = err?.response?.data?.message || 'Failed to update profile.';
+      toast.error(msg);
+      return { success: false, message: msg };
     }
   };
 
