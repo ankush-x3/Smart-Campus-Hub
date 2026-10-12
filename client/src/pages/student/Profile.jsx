@@ -40,6 +40,15 @@ export default function Profile() {
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+  // Controlled form state for Edit Profile tab
+  const [editForm, setEditForm] = useState({
+    name: '',
+    department: '',
+    year: 1,
+    phone: '',
+    bio: ''
+  });
+
   // File input refs
   const photoInputRef = useRef(null);
   const coverInputRef = useRef(null);
@@ -79,26 +88,44 @@ export default function Profile() {
     fetchProfile();
   }, []);
 
-  // Sync with authUser when updated
+  // Sync with authUser when updated or on account switch
   useEffect(() => {
-    if (authUser && !student) {
-      setStudent({
-        ...authUser,
-        id: authUser.studentId || authUser._id,
-        name: authUser.name || 'Student',
-        email: authUser.email || '',
-        phone: authUser.phone || '',
-        department: authUser.department || 'Not specified',
-        yearDisplay: authUser.year ? `${authUser.year}${getOrdinalSuffix(authUser.year)} Year` : 'Student',
-        rawYear: authUser.year || 1,
-        role: authUser.role ? (authUser.role.charAt(0).toUpperCase() + authUser.role.slice(1)) : 'Student',
-        profileImage: authUser.profileImage || '',
-        coverImage: authUser.coverImage || '',
-        bio: authUser.bio || '',
-        stats: authUser.stats || { courses: 0, events: 0, complaints: 0, posts: 0 }
+    if (authUser) {
+      setStudent(prev => {
+        if (prev && (prev._id === authUser._id || prev.id === authUser._id) && prev.name === authUser.name && prev.profileImage === authUser.profileImage && prev.coverImage === authUser.coverImage) {
+          return prev;
+        }
+        return {
+          ...authUser,
+          id: authUser.studentId || authUser._id,
+          name: authUser.name || 'Student',
+          email: authUser.email || '',
+          phone: authUser.phone || '',
+          department: authUser.department || 'Not specified',
+          yearDisplay: authUser.year ? `${authUser.year}${getOrdinalSuffix(authUser.year)} Year` : 'Student',
+          rawYear: authUser.year || 1,
+          role: authUser.role ? (authUser.role.charAt(0).toUpperCase() + authUser.role.slice(1)) : 'Student',
+          profileImage: authUser.profileImage || '',
+          coverImage: authUser.coverImage || '',
+          bio: authUser.bio || '',
+          stats: authUser.stats || { courses: 0, events: 0, complaints: 0, posts: 0 }
+        };
       });
     }
   }, [authUser]);
+
+  // Sync editForm state whenever student data is loaded or updated
+  useEffect(() => {
+    if (student) {
+      setEditForm({
+        name: student.name || '',
+        department: student.department === 'Not specified' ? '' : (student.department || ''),
+        year: student.rawYear || 1,
+        phone: student.phone || '',
+        bio: student.bio || ''
+      });
+    }
+  }, [student]);
 
   // ── Profile Photo Upload ──────────────────────────────────────────────────
   const handlePhotoSelect = async (e) => {
@@ -123,9 +150,8 @@ export default function Profile() {
     formData.append('photo', file);
 
     try {
-      const res = await api.post('/auth/profile/photo', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // Allow Axios/browser to set the multipart boundary automatically
+      const res = await api.post('/auth/profile/photo', formData);
       const updatedUser = res.data?.data || res.data;
       const newUrl = res.data?.url || updatedUser?.profileImage;
 
@@ -180,9 +206,8 @@ export default function Profile() {
     formData.append('cover', file);
 
     try {
-      const res = await api.post('/auth/profile/cover', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // Allow Axios/browser to set the multipart boundary automatically
+      const res = await api.post('/auth/profile/cover', formData);
       const updatedUser = res.data?.data || res.data;
       const newUrl = res.data?.url || updatedUser?.coverImage;
 
@@ -217,12 +242,11 @@ export default function Profile() {
   // ── Edit Profile Form Submission ──────────────────────────────────────────
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const updatedName = formData.get('name')?.trim();
-    const updatedPhone = formData.get('phone')?.trim();
-    const updatedDept = formData.get('department')?.trim();
-    const updatedYear = parseInt(formData.get('year'), 10) || 1;
-    const updatedBio = formData.get('bio')?.trim() || '';
+    const updatedName = editForm.name?.trim();
+    const updatedPhone = editForm.phone?.trim() || '';
+    const updatedDept = editForm.department?.trim() || '';
+    const updatedYear = parseInt(editForm.year, 10) || 1;
+    const updatedBio = editForm.bio?.trim() || '';
 
     if (!updatedName) {
       toast.error('Full Name cannot be empty');
@@ -243,17 +267,20 @@ export default function Profile() {
         const u = res.data;
         setStudent(prev => ({
           ...prev,
+          ...u,
+          id: u.studentId || u._id || prev?.id,
           name: u.name,
-          phone: u.phone,
-          department: u.department,
-          rawYear: u.year,
+          phone: u.phone || '',
+          department: u.department || 'Not specified',
+          rawYear: u.year || 1,
           yearDisplay: u.year ? `${u.year}${getOrdinalSuffix(u.year)} Year` : 'Student',
-          bio: u.bio,
+          bio: u.bio || '',
         }));
         setActiveTab('Overview');
       }
     } catch (err) {
-      toast.error('Failed to save profile changes');
+      console.error('Failed to save profile changes:', err);
+      toast.error(err.response?.data?.message || 'Failed to save profile changes');
     } finally {
       setIsSavingProfile(false);
     }
@@ -582,7 +609,8 @@ export default function Profile() {
                   type="text"
                   name="name"
                   required
-                  defaultValue={student?.name}
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition"
                   placeholder="e.g. John Doe"
                 />
@@ -594,7 +622,7 @@ export default function Profile() {
                 </label>
                 <input
                   type="text"
-                  defaultValue={student?.id}
+                  value={student?.id || ''}
                   disabled
                   className="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 text-sm text-slate-500 cursor-not-allowed font-mono"
                 />
@@ -609,7 +637,8 @@ export default function Profile() {
                 <input
                   type="text"
                   name="department"
-                  defaultValue={student?.department}
+                  value={editForm.department}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, department: e.target.value }))}
                   className="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition"
                   placeholder="e.g. Computer Science"
                 />
@@ -621,7 +650,8 @@ export default function Profile() {
                 </label>
                 <select
                   name="year"
-                  defaultValue={student?.rawYear || 1}
+                  value={editForm.year}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, year: parseInt(e.target.value, 10) || 1 }))}
                   className="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition bg-white"
                 >
                   <option value="1">1st Year</option>
@@ -640,7 +670,8 @@ export default function Profile() {
               <input
                 type="tel"
                 name="phone"
-                defaultValue={student?.phone}
+                value={editForm.phone}
+                onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
                 className="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition"
                 placeholder="e.g. +91 98765 43210"
               />
@@ -653,7 +684,8 @@ export default function Profile() {
               <textarea
                 name="bio"
                 rows={3}
-                defaultValue={student?.bio}
+                value={editForm.bio}
+                onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
                 className="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition resize-none"
                 placeholder="Tell us a little about your academic interests or hobbies..."
               />
